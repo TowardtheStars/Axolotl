@@ -2,5 +2,9 @@
 # Python
 __pycache__/*
 
+# Test Data
 test_data/*
 AxolotlData/*
+
+# private instruments
+basic_instrument/*
