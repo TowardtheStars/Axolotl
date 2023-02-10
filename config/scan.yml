@@ -1,0 +1,47 @@
+
+# 类型: str
+# 默认值: %Y-%m-%d %H.%M.%S
+time_format: '%Y-%m-%d %H.%M.%S'
+
+# 类型: str
+# 默认值: X %.9e
+x_format: X %.9e
+
+# 类型: str
+# 默认值: Y %.9e
+y_format: Y %.9e
+
+# 类型: str
+# 默认值: Z %.9e
+z_format: Z %.9e
+savetxt:
+
+  # 保存数据所用的字符集
+  # 类型: str
+  # 默认值: utf8
+  encoding: utf8
+
+  # C 语言风格的数据保存格式
+  # 类型: str
+  # 默认值: %.9e
+  fmt: '%.9e'
+
+  # 数据间的分隔符
+  # 类型: str
+  # 默认值:  
+  delimiter: ' '
+
+  # 文件头，不影响 loadtxt 函数的读取
+  # 类型: str
+  # 默认值: 
+  header: ''
+
+  # 文件尾，不影响 loadtxt 函数的读取
+  # 类型: str
+  # 默认值: 
+  footer: ''
+
+  # 文件每一行末尾的字符
+  # 类型: str
+  # 默认值: 
+  newline: "\n"
