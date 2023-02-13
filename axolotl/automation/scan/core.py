@@ -10,8 +10,8 @@ from copy import deepcopy
 
 import numpy as np
 
-from axolotl.backend.automation.task import *
-from axolotl.backend.instrument import *
+from ..task import *
+from axolotl.instrument import *
 
 from .events import *
 from .exceptions import *

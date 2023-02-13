@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar
 
 import numpy as np
 
-from axolotl.backend.util import *
+from axolotl.util import *
 
 
 __all__ = (

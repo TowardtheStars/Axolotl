@@ -2,7 +2,7 @@
 
 import logging
 from typing import Callable, Dict, List, Optional, Type, TypeVar, Union
-from axolotl.backend.util import annotation
+from axolotl.util import annotation
 
 Event = TypeVar('Event')
 

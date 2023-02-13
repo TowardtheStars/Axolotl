@@ -10,10 +10,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib
 
-from axolotl.backend.automation.scan.events import *
-from axolotl.backend.automation.scan.exceptions import *
-from axolotl.backend.instrument import *
-from axolotl.backend.util import *
+from axolotl.automation.scan.events import *
+from axolotl.automation.scan.exceptions import *
+from axolotl.instrument import *
+from axolotl.util import *
 
 from ..data import ScanData, ScanPlan
 

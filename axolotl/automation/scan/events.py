@@ -4,8 +4,8 @@ from datetime import datetime
 
 import numpy as np
 
-from axolotl.backend.instrument import *
-from axolotl.backend.util import EventBus
+from axolotl.instrument import *
+from axolotl.util import EventBus
 
 from .data import *
 

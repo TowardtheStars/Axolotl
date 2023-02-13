@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from axolotl.backend.instrument import *
-from axolotl.backend.util import *
+from axolotl.instrument import *
+from axolotl.util import *
 
 __all__ = ['ScanData', 'AxisInfo', 'ScanPlan']
 
