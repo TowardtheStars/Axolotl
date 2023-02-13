@@ -7,8 +7,8 @@ import numpy as np
 from PyQt5.QtWidgets import QComboBox
 from PyQt5.uic import loadUi
 
-from axolotl.backend.instrument import Channel, InstrumentManager
-from axolotl.backend.util import EventBus
+from axolotl.instrument import Channel, InstrumentManager
+from axolotl.util import EventBus
 
 update_channel_comboboxes = []
 

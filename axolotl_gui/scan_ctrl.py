@@ -12,11 +12,11 @@ from PyQt5.QtWidgets import QDoubleSpinBox, QGroupBox, QListWidgetItem, QMessage
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 
-from axolotl.backend.util.misc import *
-from axolotl.backend.instrument import *
-from axolotl.backend.automation.scan import *
-from axolotl.backend.automation.scan.events import *
-from axolotl.backend.automation.task import Task
+from axolotl.util.misc import *
+from axolotl.instrument import *
+from axolotl.automation.scan import *
+from axolotl.automation.scan.events import *
+from axolotl.automation.task import Task
 
 from .assets.ui_scan_ctrl import Ui_ScanControl
 from .controller import *

@@ -9,8 +9,8 @@ import logging
 
 from PyQt5.QtWidgets import QFrame, QGroupBox
 
-from axolotl.backend.instrument import *
-from axolotl.backend.util import *
+from axolotl.instrument import *
+from axolotl.util import *
 
 from .assets.ui_channel_ctrl import Ui_ChannelCtrl
 from .assets.ui_channel_layout import Ui_ChannelWidget

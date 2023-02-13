@@ -7,13 +7,13 @@ from os.path import join as pathjoin
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.uic import loadUi
-from axolotl.backend.automation.task import getTaskManager
 
-from axolotl.backend.instrument import InstrumentManager
-from axolotl.backend.util import *
+from axolotl.automation.task import getTaskManager
+from axolotl.instrument import InstrumentManager
+from axolotl.util import *
 from . import controller
-from axolotl.gui.channel_ui import ChannelCtrl
-from axolotl.gui.scan_ctrl import ScanCtrl
+from .channel_ui import ChannelCtrl
+from .scan_ctrl import ScanCtrl
 
 from .assets.ui_main_window import Ui_mainwindow
 
