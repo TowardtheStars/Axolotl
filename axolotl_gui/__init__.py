@@ -39,7 +39,6 @@ def self_check() -> Tuple[bool, list]:
 def main():
     from axolotl.instrument import InstrumentManager
     from .mainwindow import MainWindow
-    from PyQt5.Qt5
     result, info = self_check()
     if not result:
         logger.error(info)
