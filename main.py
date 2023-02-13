@@ -11,6 +11,6 @@ logger.addHandler(handler)
 
 import axolotl
 # 导入仪器包
-import basic_instrument
+import VirtualInstruments
 
 axolotl.main()
