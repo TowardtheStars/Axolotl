@@ -5,6 +5,7 @@ __pycache__/*
 # Test Data
 test_data/*
 AxolotlData/*
+__pycache__
 
 # private instruments
 basic_instrument/*
