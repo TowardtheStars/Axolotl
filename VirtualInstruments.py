@@ -1,7 +1,7 @@
 import functools
 
-from axolotl.backend.instrument import Channel, Instrument, InstrumentManager
-from axolotl.backend.util import *
+from axolotl.instrument import Channel, Instrument, InstrumentManager
+from axolotl.util import *
 
 
 def config_template(channel_list):
