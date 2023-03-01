@@ -1,7 +1,7 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, MutableSet
 
 import numpy as np
 
@@ -62,8 +62,8 @@ class ScanPlan:
     extra_info: str = ''
     
     channel_formula: Dict[ChannelId, str] = field(default_factory=dict)
-    record_env_channel: List[ChannelId] = field(default_factory=list)
-    scan_channel: List[ChannelId] = field(default_factory=list)
+    record_env_channel: MutableSet[ChannelId] = field(default_factory=set)
+    scan_channel: MutableSet[ChannelId] = field(default_factory=set)
 
     axes: List[AxisInfo] = field(default_factory=list) # last item is the outermost axis
 
@@ -115,6 +115,8 @@ class ScanPlanEncoder(json.JSONEncoder):
             return result
         elif isinstance(o, AxisInfo):
             return o.__dict__
+        elif isinstance(o, set):
+            return list(o)
         return json.JSONEncoder.default(self, o)
 
 

@@ -304,13 +304,13 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                     _name=self.scan_plan_name.text(),
                     save_path=self.save_path.text(),
                     extra_info=self.extra_info_text.toPlainText(),
-                    record_env_channel=[
+                    record_env_channel={
                         self.record_channel_list.item(idx).data(self.CHANNEL_ID) for idx in range(self.record_channel_list.count())
-                    ],
+                    },
                     channel_formula=channel_formula,
-                    scan_channel=[
+                    scan_channel={
                         self.scan_channel_list.item(idx).data(self.CHANNEL_ID) for idx in range(self.scan_channel_list.count())
-                    ],
+                    },
                     axes=axes,
                     plugin_config=plugin_config
                 )
@@ -388,7 +388,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                     json.dump([self.scan_plan_list.item(_id).data(self.PLAN) for _id in range(self.scan_plan_list.count())], 
                             fp=file, ensure_ascii=False, cls=ScanPlan.encoder_cls(), indent=2, sort_keys=True)
 
-            
+        @self.refresh_gui
         @self.refresh_data
         def __add_record_channel():
             channel_id: ChannelId = self.record_channel_combobox.currentData()
@@ -405,12 +405,14 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                     logger.error('Unable to set `%s` as record channel, channel invalid or not readable', channel_name)
                     QMessageBox(title='错误', text='不能将{}设置为记录频道, 频道不可用或不可读取'.format(channel_name), buttons=QMessageBox.StandardButton.Ok, parent=self)
 
+
         @self.refresh_data
         def __remove_record_channel():
             for item in self.record_channel_list.selectedIndexes():
                 self.record_channel_list.takeItem(item.row())
             
 
+        @self.refresh_gui
         @self.refresh_data
         def __add_scan_channel():
             channel_id: str = self.scan_channel_combobox.currentData()
@@ -442,6 +444,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                 self.scan_data.save_path = directory
 
         
+        @self.refresh_gui
         @self.refresh_data
         def __add_multi_channel():
             channel_id = self.multi_channel_combobox.currentData()
