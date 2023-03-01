@@ -114,9 +114,12 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
 
             logger.debug('Display ScanPlan %s', self.scan_data)
 
+            # 启用控件
             self.summary_tab.setEnabled(True)
-
+            # 扫描计划名称
             self.scan_plan_name.setText(self.scan_data.name)
+
+            # region 控制的环境变量通道
             self.record_channel_list.clear()
             for channel_id in self.scan_data.record_env_channel:
                 channel = self.manager.get_channel(channel_id)
@@ -125,10 +128,15 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                     item.setText('{0} = {1}'.format(channel.name, channel.read()))
                     item.setData(self.CHANNEL_ID, channel_id)
                     self.record_channel_list.addItem(item)
+            # endregion
 
+            # 保存路径
             self.save_path.setText(self.scan_data.save_path)
+
+            # 额外文本信息
             self.extra_info_text.setPlainText(self.scan_data.extra_info)
 
+            # region 扫描通道
             self.scan_channel_list.clear()
             for channel_id in self.scan_data.scan_channel:
                 channel = self.manager.get_channel(channel_id)
@@ -137,8 +145,9 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                     item.setText(channel.name)
                     item.setData(self.CHANNEL_ID, channel_id)
                     self.scan_channel_list.addItem(item)
+            # endregion
             
-            # region Channel Axes Info
+            # region 扫描轴信息
             f = ([s for s in self.scan_data.channel_formula.values()])
             channel_mode = True
             if 0 < len(f) <= 3:
@@ -159,7 +168,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             self.should_scan_y.setChecked(self.scan_data.axes_count() >= 2)
             self.channel_combobox_y.setEnabled(self.should_scan_y.isChecked())
             if self.channel_mode_real_channel:
-                # load into real channel mode GUI
+                # 加载真实通道
                 
                 for chid, axis in self.scan_data.channel_formula.items():
                     combobox: QComboBox = getattr(self, 'channel_combobox_' + axis)
@@ -169,8 +178,17 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                         combobox.setCurrentIndex(channel.index) 
                     else:
                         combobox.setCurrentIndex(0)
+                # 关闭虚拟通道界面
+                for uicontroller in self.multi_channel_tab.children():
+                    if not isinstance(uicontroller, QtWidgets.QLayout):
+                        uicontroller.setEnabled(False)
+                # 清空虚拟通道列表
+                self.multi_channel_list.clear()
             else:
-                # load into virtual channel mode GUI
+                # 加载虚拟通道
+                for uicontroller in self.multi_channel_tab.children():
+                    if not isinstance(uicontroller, QtWidgets.QLayout):
+                        uicontroller.setEnabled(True)
                 self.channel_combobox_x.setEnabled(False)
                 self.channel_combobox_y.setEnabled(False)
                 self.channel_combobox_z.setEnabled(False)
@@ -185,7 +203,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                         item.setData(self.CHANNEL_FORMULA, formula)
                         self.multi_channel_list.addItem(item)
             
-            # Mundane axes info
+            # 轴基本信息
             axes = deepcopy(self.scan_data.axes)
             zyx = 'xyz'[0:len(axes)]
             for axis_idx in range(len(axes)):
@@ -196,6 +214,8 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                 getattr(self, 'interval_' + zyx[axis_idx] + '_spinbox').setValue(axes[axis_idx].interval)
             # endregion
             
+
+            # 其他设置页面
             self.recover_checkBox.setChecked(self.scan_data.plugin_config.get('recover_init_value', False))
             self.draw_1d_checkBox.setChecked(self.scan_data.plugin_config.get('draw_1d', False))
             self.draw_2d_checkBox.setChecked(self.scan_data.plugin_config.get('draw_2d', False))
@@ -363,12 +383,17 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             if self.channel_mode_real_channel:
                 self.channel_mode_switch_btn.setText('真实通道')
                 self.channel_combobox_x.setEnabled(True)
-                
+                for uicontroller in self.multi_channel_tab.children():
+                    if not isinstance(uicontroller, QtWidgets.QLayout):
+                            uicontroller.setEnabled(False)
             else:
                 self.channel_mode_switch_btn.setText('虚拟通道')
                 self.channel_combobox_x.setEnabled(False)
                 self.channel_combobox_y.setEnabled(False)
                 self.channel_combobox_z.setEnabled(False)
+                for uicontroller in self.multi_channel_tab.children():
+                    if not isinstance(uicontroller, QtWidgets.QLayout):
+                            uicontroller.setEnabled(True)
 
         
         def __create_plan():
