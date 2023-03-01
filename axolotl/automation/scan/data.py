@@ -109,7 +109,7 @@ class ScanPlanEncoder(json.JSONEncoder):
     def default(self, o: Any) -> Any:
         if isinstance(o, ScanPlan):
             result = {
-                name: getattr(o, name) for name in ('name', 'save_path', 'extra_info', 'channel_formula', 'record_env_channel', 'scan_channel')
+                name: getattr(o, name) for name in ('name', 'save_path', 'extra_info', 'channel_formula', 'record_env_channel', 'scan_channel', 'plugin_config')
             }
             result['axes'] = [axis.__dict__ for axis in o.axes]
             return result
