@@ -40,6 +40,11 @@ class ScanExecutor(Task):
 
         self._max_pass_data_layer:int = 2
         self.__timestamp:datetime = None
+        self.__progress = 0
+
+    @property
+    def progress(self):
+        return self.__progress
 
     @property
     def max_pass_data_layer(self) -> int:
@@ -50,7 +55,7 @@ class ScanExecutor(Task):
         return self.__manager
 
     def fire_event(self, event_type:Type[ScanEvent], **kwargs):
-        SCAN_EVENT_BUS.fire_event(event_type(scan_plan=self._plan, instrument_manager=self.manager, timestamp=self.__timestamp, **kwargs))
+        SCAN_EVENT_BUS.fire_event(event_type(scan_plan=self._plan, instrument_manager=self.manager, timestamp=self.__timestamp, progress=self.progress, **kwargs))
 
 
     def on_start(self):
@@ -66,6 +71,7 @@ class ScanExecutor(Task):
             self.manager.get_channel_strong(idx): formula
             for idx, formula in self._plan.channel_formula.items()
         }
+        self.__progress = 0
         self.__validate()
 
     def __validate(self):
@@ -172,7 +178,7 @@ class ScanExecutor(Task):
                         
                         self.set_channels(current_x_stack)
                         time.sleep(current_axis.interval)   
-
+                        self.__progress += 1
                         self.fire_event(PreMeasureEvent,
                             current_axis_stack=np.array(current_x_stack)
                         )

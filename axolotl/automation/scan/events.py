@@ -19,6 +19,7 @@ class ScanEvent:
     scan_plan: 'ScanPlan'
     timestamp: datetime
     instrument_manager: 'InstrumentManager'
+    progress: int
 
     
 @dataclass

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'd:\Documents\Proj\Axolotl\axolotl\gui\assets\channel_layout.ui'
+# Form implementation generated from reading ui file 'd:\Documents\Proj\Axolotl\axolotl_gui\assets\channel_layout.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.7
 #
@@ -39,7 +39,19 @@ class Ui_ChannelWidget(object):
         self.channel_selection_combo_box.setMinimumContentsLength(0)
         self.channel_selection_combo_box.setObjectName("channel_selection_combo_box")
         self.verticalLayout.addWidget(self.channel_selection_combo_box)
-        self.current_channel_readout = QtWidgets.QLabel(ChannelWidget)
+        self.scrollArea = QtWidgets.QScrollArea(ChannelWidget)
+        self.scrollArea.setMaximumSize(QtCore.QSize(16777215, 20))
+        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setObjectName("scrollArea")
+        self.scrollAreaWidgetContents = QtWidgets.QWidget()
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 211, 18))
+        self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
+        self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
+        self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout_2.setSpacing(0)
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.current_channel_readout = QtWidgets.QLabel(self.scrollAreaWidgetContents)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -52,11 +64,14 @@ class Ui_ChannelWidget(object):
         font.setWeight(50)
         self.current_channel_readout.setFont(font)
         self.current_channel_readout.setLayoutDirection(QtCore.Qt.LeftToRight)
-        self.current_channel_readout.setTextFormat(QtCore.Qt.PlainText)
-        self.current_channel_readout.setAlignment(QtCore.Qt.AlignCenter)
+        self.current_channel_readout.setTextFormat(QtCore.Qt.AutoText)
+        self.current_channel_readout.setScaledContents(False)
+        self.current_channel_readout.setAlignment(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignTop)
         self.current_channel_readout.setWordWrap(True)
         self.current_channel_readout.setObjectName("current_channel_readout")
-        self.verticalLayout.addWidget(self.current_channel_readout)
+        self.verticalLayout_2.addWidget(self.current_channel_readout)
+        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
+        self.verticalLayout.addWidget(self.scrollArea)
         self.stepping_spinbox = QtWidgets.QDoubleSpinBox(ChannelWidget)
         self.stepping_spinbox.setAlignment(QtCore.Qt.AlignCenter)
         self.stepping_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
@@ -77,6 +92,9 @@ class Ui_ChannelWidget(object):
         self.verticalLayout.addWidget(self.auto_refresh_checkbox)
         self.verticalLayout.setStretch(0, 10)
         self.verticalLayout.setStretch(1, 10)
+        self.verticalLayout.setStretch(2, 10)
+        self.verticalLayout.setStretch(3, 10)
+        self.verticalLayout.setStretch(4, 10)
 
         self.retranslateUi(ChannelWidget)
         QtCore.QMetaObject.connectSlotsByName(ChannelWidget)
@@ -85,5 +103,5 @@ class Ui_ChannelWidget(object):
         _translate = QtCore.QCoreApplication.translate
         ChannelWidget.setWindowTitle(_translate("ChannelWidget", "Form"))
         self.channel_selection_combo_box.setCurrentText(_translate("ChannelWidget", "请选择频道"))
-        self.current_channel_readout.setText(_translate("ChannelWidget", "0"))
+        self.current_channel_readout.setText(_translate("ChannelWidget", "11111111111111111111111111111111111"))
         self.auto_refresh_checkbox.setText(_translate("ChannelWidget", "自动更新"))

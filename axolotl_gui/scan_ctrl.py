@@ -44,7 +44,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         self.save_path.clear()
         
         self.channel_mode_switch_btn.setText('真实通道')
-        self.task: Optional[Task] = None
+        self.task: Optional[ScanExecutor] = None
         self.progressbar.setValue(0)
         self.progressbar.setMinimum(0)
         self.progressbar.setMaximum(1)
@@ -65,7 +65,22 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
     @property
     def manager(self):
         return self._manager
-
+    
+    def get_plan_controllers(self) -> tuple[QWidget]:
+        return (
+            self.scan_plan_name, 
+            self.record_channel_add_btn, self.record_channel_add_current_btn, self.record_channel_combobox, self.record_channel_del_all_btn, self.record_channel_list, self.record_channel_del_btn,
+            self.save_path, self.save_folder_dialog_btn, self.extra_info_text,
+            self.should_scan_y, self.should_scan_z,
+            self.channel_combobox_x, self.channel_combobox_y, self.channel_combobox_z,
+            self.start_x_spinbox, self.start_y_spinbox, self.start_z_spinbox,
+            self.step_x_spinbox, self.step_y_spinbox, self.step_z_spinbox,
+            self.stop_x_spinbox, self.stop_y_spinbox, self.stop_z_spinbox,
+            self.interval_x_spinbox, self.interval_y_spinbox, self.interval_z_spinbox,
+            self.scan_channel_add_btn, self.scan_channel_combobox, self.scan_channel_del_btn, self.scan_channel_list,
+            self.multi_channel_tab, self.settings_tab
+            )
+    
     @property
     def PLAN(self) -> int:
         return Qt.ItemDataRole.UserRole
@@ -185,6 +200,11 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             self.draw_1d_checkBox.setChecked(self.scan_data.plugin_config.get('draw_1d', False))
             self.draw_2d_checkBox.setChecked(self.scan_data.plugin_config.get('draw_2d', False))
             self.tabWidget.setEnabled(True)
+            
+            flag = self.task and self.task.get_thread().running() and self.task._plan == self.scan_data
+            for controller in self.get_plan_controllers():
+                controller.setEnabled(not flag)
+
         else:
             self.tabWidget.setEnabled(False)
         self.refreshing_gui = False
@@ -311,6 +331,13 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         
         return wrapped
 
+    def find_plan_item(self, plan:ScanPlan) -> QListWidgetItem:
+        for item_idx in range(self.scan_plan_list.count()):
+            item:QListWidgetItem = self.scan_plan_list.item(item_idx)
+            if item.data(self.PLAN) == plan:
+                return item
+        logger.warn('Unmanaged plan detected!, %s' + plan)
+        return None
     
     def connect_callbacks(self):
 
@@ -489,30 +516,41 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
 
         # region Eventlisteners
         @SCAN_EVENT_BUS.event_listener(PostMeasureEvent)
-        def __update_progress_bar(event:PostMeasureEvent):  
-            self.progressbar.setValue(self.progressbar.value() + 1)
-            
-            eta = int((self.scan_data.workload - self.progressbar.value()) / self.progressbar.value() * (datetime.now() - event.timestamp).total_seconds())
-            eta_m, eta_s = divmod(eta, 60)
-            eta_h, eta_m = divmod(eta_m, 60)
-            self.current_status.setText(
-                '当前进度 {v}/{m}\t'.format(v=self.progressbar.value(), m=self.progressbar.maximum()) 
-                + 'ETA: {h}h {min}min {sec}sec'.format(h=eta_h, min=eta_m, sec=eta_s)
-                )
+        def __update_progress_bar(event:PostMeasureEvent): 
+            if event.scan_plan == self.scan_data: 
+                self.progressbar.setValue(self.progressbar.value() + 1)
+                
+                eta = int((self.scan_data.workload - self.progressbar.value()) / self.progressbar.value() * (datetime.now() - event.timestamp).total_seconds())
+                eta_m, eta_s = divmod(eta, 60)
+                eta_h, eta_m = divmod(eta_m, 60)
+                self.current_status.setText(
+                    '当前进度 {v}/{m}\t'.format(v=self.progressbar.value(), m=self.progressbar.maximum()) 
+                    + 'ETA: {h}h {min}min {sec}sec'.format(h=eta_h, min=eta_m, sec=eta_s)
+                    )
+                self.scan_plan_list.currentItem().setText(event.scan_plan.name + '...%d%%' % (event.progress / event.scan_plan.workload * 100))
+            else:
+                self.find_plan_item(event.scan_plan).setText(event.scan_plan.name + '...%d%%' % (event.progress / event.scan_plan.workload * 100))
+
 
         @SCAN_EVENT_BUS.event_listener(ScanStartEvent)
-        def __start_scan_event(event):
-            self.start_scan.setEnabled(False)
-            self.progressbar.setEnabled(True)
-            self.progressbar.setValue(0)
-            self.stop_scan.setEnabled(True)
-            self.current_status.setText('当前进度 {v}/{m}\t'.format(v=self.progressbar.value(), m=self.progressbar.maximum()))
+        def __start_scan_event(event:ScanStartEvent):
+            if event.scan_plan == self.scan_data:
+                self.start_scan.setEnabled(False)
+                self.progressbar.setEnabled(True)
+                self.progressbar.setValue(0)
+                self.stop_scan.setEnabled(True)
+                self.current_status.setText('当前进度 {v}/{m}\t'.format(v=self.progressbar.value(), m=self.progressbar.maximum()))
+                self.scan_plan_list.currentItem().setText(self.scan_data.name + '...Init!')
+            else:
+                self.find_plan_item(event.scan_plan).setText(event.scan_plan.name + '...Init!')
 
         @SCAN_EVENT_BUS.event_listener(ScanEndEvent)
-        def __end_scan_event(event):
-            self.start_scan.setEnabled(True)
-            self.progressbar.setEnabled(False)
-            self.stop_scan.setEnabled(False)
+        def __end_scan_event(event:ScanEndEvent):
+            if event.scan_plan == self.scan_data:
+                self.start_scan.setEnabled(True)
+                self.progressbar.setEnabled(False)
+                self.stop_scan.setEnabled(False)
+            self.find_plan_item(event.scan_plan).setText(event.scan_plan.name)
 
         @GUI_EVENTBUS.event_listener(RefreshEvent)
         def __refresh_env_channel(event):

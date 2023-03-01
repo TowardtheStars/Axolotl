@@ -141,10 +141,7 @@ def record_matrix_data(event:PostMeasureEvent):
 def record_parameter(event:ScanStartEvent):
     plan = event.scan_plan
     path = __save_path_root(plan, event.timestamp) 
-    result = ["{axis_name}:({start}:{step}:{end})[{interval}s]".format(
-        axis_name=ax.name.capitalize(), start=ax.start, step=ax.step, 
-        end=ax.end, interval=ax.interval
-    ) for ax in plan.axes]
+    result = [f"{ax.name.capitalize()}:({ax.start}:{ax.step}:{ax.end})[{ax.interval}s]" for ax in plan.axes]
     result.append('')
     result.append('Channel formula:')
     result.extend([
@@ -152,8 +149,8 @@ def record_parameter(event:ScanStartEvent):
         for k, v in plan.channel_formula.items()
     ])
     result.append('')
-    result.append('Read @{timestamp}'.format(timestamp=datetime.now().strftime(scan_config['time_format'])))
-
+    result.append(f'Read @{datetime.now().strftime(scan_config["time_format"])}')
+    
     result.append(', '.join(plan.scan_channel))
     result.append('')
     result.append('Extra Info:')
@@ -161,9 +158,7 @@ def record_parameter(event:ScanStartEvent):
     result.append('')
     result.append('Recorded Channels:')
     result.extend([
-        "{channel_name}={value}".format(
-        channel_name=event.instrument_manager.get_channel_strong(channel_id).name, 
-        value=event.instrument_manager.get_channel_strong(channel_id).read())
+        f"{event.instrument_manager.get_channel_strong(channel_id).name}={event.instrument_manager.get_channel_strong(channel_id).read()}"
             for channel_id in plan.record_env_channel
     ])
     os.makedirs(path, exist_ok=True)
@@ -216,7 +211,7 @@ class DrawLine:
                 ax.set_xlabel(event.scan_plan.axes[0].name)
                 ax.set_ylabel(scan_channel_names[i])
                 ax.set_title(env_str)
-                fig.savefig(os.path.join(path, '{name}[y]={value}[{0:d}].png'.format(i + 1, value=event.data.x[-1] if len(event.data.x) > 0 else 1, name=event.axis.name)), **self.save_config)
+                fig.savefig(os.path.join(path, f'{event.axis.name}[y]={event.data.x[-1] if len(event.data.x) > 0 else 1}[{i + 1:d}].png'), **self.save_config)
                 plt.close(fig)
 
         return None
