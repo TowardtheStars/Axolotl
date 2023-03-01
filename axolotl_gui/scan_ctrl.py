@@ -113,9 +113,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         if self.scan_data is not None:
 
             logger.debug('Display ScanPlan %s', self.scan_data)
-
-            # 启用控件
-            self.summary_tab.setEnabled(True)
+            self.tabWidget.setEnabled(True)
             # 扫描计划名称
             self.scan_plan_name.setText(self.scan_data.name)
 
@@ -148,50 +146,31 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             # endregion
             
             # region 扫描轴信息
-            f = ([s for s in self.scan_data.channel_formula.values()])
-            channel_mode = True
-            if 0 < len(f) <= 3:
-                channel_mode = 'x' in f
-                if len(f) > 1:
-                    channel_mode = channel_mode and 'y' in f
-                    if len(f) > 2:
-                        channel_mode = channel_mode and 'z' in f
-            elif len(f) == 0:
-                channel_mode = True
-            else:
-                channel_mode = False
-            self.channel_mode_real_channel = channel_mode
+            
+            self.channel_mode_real_channel = self.scan_data.plugin_config.get('real_channel', True)
             self.channel_mode_switch_btn.setText('真实通道' if self.channel_mode_real_channel else '虚拟通道')
 
             self.should_scan_z.setChecked(self.scan_data.axes_count() == 3)
-            self.channel_combobox_z.setEnabled(self.should_scan_z.isChecked())
+            self.channel_combobox_z.setEnabled(self.should_scan_z.isChecked() and self.channel_mode_real_channel)
             self.should_scan_y.setChecked(self.scan_data.axes_count() >= 2)
-            self.channel_combobox_y.setEnabled(self.should_scan_y.isChecked())
+            self.channel_combobox_y.setEnabled(self.should_scan_y.isChecked() and self.channel_mode_real_channel)
+            self.channel_combobox_x.setEnabled(self.channel_mode_real_channel)
+
+            self.enable_multi_channel(not self.channel_mode_real_channel)
             if self.channel_mode_real_channel:
                 # 加载真实通道
                 
                 for chid, axis in self.scan_data.channel_formula.items():
                     combobox: QComboBox = getattr(self, 'channel_combobox_' + axis)
                     channel = self.manager.get_channel(chid)
-                    combobox.setEnabled(True)
                     if channel:
                         combobox.setCurrentIndex(channel.index) 
                     else:
                         combobox.setCurrentIndex(0)
-                # 关闭虚拟通道界面
-                for uicontroller in self.multi_channel_tab.children():
-                    if not isinstance(uicontroller, QtWidgets.QLayout):
-                        uicontroller.setEnabled(False)
                 # 清空虚拟通道列表
                 self.multi_channel_list.clear()
             else:
                 # 加载虚拟通道
-                for uicontroller in self.multi_channel_tab.children():
-                    if not isinstance(uicontroller, QtWidgets.QLayout):
-                        uicontroller.setEnabled(True)
-                self.channel_combobox_x.setEnabled(False)
-                self.channel_combobox_y.setEnabled(False)
-                self.channel_combobox_z.setEnabled(False)
 
                 self.multi_channel_list.clear()
                 for chid, formula in self.scan_data.channel_formula.items():
@@ -216,14 +195,14 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             
 
             # 其他设置页面
-            self.recover_checkBox.setChecked(self.scan_data.plugin_config.get('recover_init_value', False))
+            self.recover_checkBox.setChecked(self.scan_data.plugin_config.get('reset2init', False))
             self.draw_1d_checkBox.setChecked(self.scan_data.plugin_config.get('draw_1d', False))
             self.draw_2d_checkBox.setChecked(self.scan_data.plugin_config.get('draw_2d', False))
-            self.tabWidget.setEnabled(True)
             
-            flag = self.task and self.task.get_thread().running() and self.task._plan == self.scan_data
-            for controller in self.get_plan_controllers():
-                controller.setEnabled(not flag)
+            
+            if self.task and self.task.get_thread().running() and self.task._plan == self.scan_data:
+                for controller in self.get_plan_controllers():
+                    controller.setEnabled(False)
 
         else:
             self.tabWidget.setEnabled(False)
@@ -244,11 +223,101 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                     result = func(self)
                 except:
                     result = func()
-            self.__refresh_gui()
+            try:
+                self.__refresh_gui()
+            except :
+                if self.scan_data:
+                    self.on_scan_plan_data_error()
             return result
 
         return wrapped
 
+    def __refresh_data(self):
+        if not self.refreshing_gui: # 状态机，用于在刷新 GUI 时禁用写入扫描计划
+            logger.debug('Read ScanPlan from GUI')
+            if self.channel_mode_real_channel:
+                channel_formula={}
+                if self.channel_combobox_x.currentData():
+                    channel_formula.update({
+                        self.channel_combobox_x.currentData():'x',
+                    })
+                if self.should_scan_y.isChecked() and self.channel_combobox_y.currentData():
+                    channel_formula.update({self.channel_combobox_y.currentData():'y',})
+                if self.should_scan_z.isChecked() and self.channel_combobox_z.currentData():
+                    channel_formula.update({self.channel_combobox_z.currentData():'z'})
+            else:
+                channel_formula={
+                    channel.data(self.CHANNEL_ID):channel.data(self.CHANNEL_FORMULA) 
+                    for channel in [
+                        self.multi_channel_list.item(idx) 
+                        for idx in range(self.multi_channel_list.count())
+                        ]
+                }
+            
+            
+            axes = [
+                AxisInfo(
+                    name=self.manager.get_channel(self.channel_combobox_x.currentData()).name if self.channel_mode_real_channel else 'x',
+                    start=self.start_x_spinbox.value(),
+                    step=self.step_x_spinbox.value(),
+                    end=self.stop_x_spinbox.value(),
+                    interval=self.interval_x_spinbox.value()
+                )
+                ]
+            if self.should_scan_y.isChecked():
+                axes.append(AxisInfo(
+                    name=self.manager.get_channel(self.channel_combobox_y.currentData()).name if self.channel_mode_real_channel else 'y',
+                    start=self.start_y_spinbox.value(),
+                    step=self.step_y_spinbox.value(),
+                    end=self.stop_y_spinbox.value(),
+                    interval=self.interval_y_spinbox.value()
+                ))
+                if self.should_scan_z.isChecked():
+                    axes.append(AxisInfo(
+                        name=self.manager.get_channel(self.channel_combobox_z.currentData()).name if self.channel_mode_real_channel else 'z',
+                        start=self.start_z_spinbox.value(),
+                        step=self.step_z_spinbox.value(),
+                        end=self.stop_z_spinbox.value(),
+                        interval=self.interval_z_spinbox.value()
+                    ))
+
+
+            plugin_config = {
+                'real_channel': self.channel_mode_real_channel,
+                'draw_1d': self.draw_1d_checkBox.isChecked(),
+                'draw_2d': self.draw_2d_checkBox.isChecked(),
+                'reset2init': self.recover_checkBox.isChecked(),
+            }
+
+            plan = ScanPlan(
+                _name=self.scan_plan_name.text(),
+                save_path=self.save_path.text(),
+                extra_info=self.extra_info_text.toPlainText(),
+                record_env_channel={
+                    self.record_channel_list.item(idx).data(self.CHANNEL_ID) for idx in range(self.record_channel_list.count())
+                },
+                channel_formula=channel_formula,
+                scan_channel={
+                    self.scan_channel_list.item(idx).data(self.CHANNEL_ID) for idx in range(self.scan_channel_list.count())
+                },
+                axes=axes,
+                plugin_config=plugin_config
+            )
+            
+            logger.debug(plan)
+            item = self.scan_plan_list.currentItem()
+            if not item:
+                self.scan_plan_list.setCurrentItem(self.scan_plan_list.item(0))
+            item = self.scan_plan_list.currentItem()
+            if item:
+                item.setData(self.PLAN, plan)
+                item.setText(plan.name)
+
+            # save plans
+            with open(self.PLAN_PATH, mode='w', encoding='utf8') as file:
+                json.dump([self.scan_plan_list.item(_id).data(self.PLAN) for _id in range(self.scan_plan_list.count())], 
+                        fp=file, ensure_ascii=False, cls=ScanPlan.encoder_cls(), indent=2, sort_keys=True)
+    
     @annotation
     def refresh_data(self, func):
         """ Annotation for controllers to refresh scan plan data
@@ -264,92 +333,14 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                 except:
                     result = func()
             
-            if not self.refreshing_gui:
-                logger.debug('Refresh ScanPlan')
-                if self.channel_mode_real_channel:
-                    # logger.debug(self.channel_combobox_x.currentData())
-                    channel_formula={}
-                    if self.channel_combobox_x.currentData():
-                        channel_formula.update({
-                            self.channel_combobox_x.currentData():'x',
-                        })
-                    if self.should_scan_y.isChecked() and self.channel_combobox_y.currentData():
-                        channel_formula.update({self.channel_combobox_y.currentData():'y',})
-                    if self.should_scan_z.isChecked() and self.channel_combobox_z.currentData():
-                        channel_formula.update({self.channel_combobox_z.currentData():'z'})
-                else:
-                    channel_formula={
-                        channel.data(self.CHANNEL_ID):channel.data(self.CHANNEL_FORMULA) 
-                        for channel in [
-                            self.multi_channel_list.item(idx) 
-                            for idx in range(self.multi_channel_list.count())
-                            ]
-                    }
-                
-                
-                axes = [
-                    AxisInfo(
-                        name=self.manager.get_channel(self.channel_combobox_x.currentData()).name if self.channel_mode_real_channel else 'x',
-                        start=self.start_x_spinbox.value(),
-                        step=self.step_x_spinbox.value(),
-                        end=self.stop_x_spinbox.value(),
-                        interval=self.interval_x_spinbox.value()
-                    )
-                    ]
-                if self.should_scan_y.isChecked():
-                    axes.append(AxisInfo(
-                        name=self.manager.get_channel(self.channel_combobox_y.currentData()).name if self.channel_mode_real_channel else 'y',
-                        start=self.start_y_spinbox.value(),
-                        step=self.step_y_spinbox.value(),
-                        end=self.stop_y_spinbox.value(),
-                        interval=self.interval_y_spinbox.value()
-                    ))
-                    if self.should_scan_z.isChecked():
-                        axes.append(AxisInfo(
-                            name=self.manager.get_channel(self.channel_combobox_z.currentData()).name if self.channel_mode_real_channel else 'z',
-                            start=self.start_z_spinbox.value(),
-                            step=self.step_z_spinbox.value(),
-                            end=self.stop_z_spinbox.value(),
-                            interval=self.interval_z_spinbox.value()
-                        ))
-
-
-                plugin_config = {
-                    'draw_1d': self.draw_1d_checkBox.isChecked(),
-                    'draw_2d': self.draw_2d_checkBox.isChecked(),
-                    'reset2init': self.recover_checkBox.isChecked(),
-                }
-
-                plan = ScanPlan(
-                    _name=self.scan_plan_name.text(),
-                    save_path=self.save_path.text(),
-                    extra_info=self.extra_info_text.toPlainText(),
-                    record_env_channel={
-                        self.record_channel_list.item(idx).data(self.CHANNEL_ID) for idx in range(self.record_channel_list.count())
-                    },
-                    channel_formula=channel_formula,
-                    scan_channel={
-                        self.scan_channel_list.item(idx).data(self.CHANNEL_ID) for idx in range(self.scan_channel_list.count())
-                    },
-                    axes=axes,
-                    plugin_config=plugin_config
-                )
-                logger.debug(plan)
-                item = self.scan_plan_list.currentItem()
-                if not item:
-                    self.scan_plan_list.setCurrentItem(self.scan_plan_list.item(0))
-                item = self.scan_plan_list.currentItem()
-                if item:
-                    item.setData(self.PLAN, plan)
-                    item.setText(plan.name)
-
-                # save plans
-                with open(self.PLAN_PATH, mode='w', encoding='utf8') as file:
-                    json.dump([self.scan_plan_list.item(_id).data(self.PLAN) for _id in range(self.scan_plan_list.count())], 
-                            fp=file, ensure_ascii=False, cls=ScanPlan.encoder_cls(), indent=2, sort_keys=True)
+            self.__refresh_data()
             return result
         
         return wrapped
+    
+    def enable_multi_channel(self, enable):
+        for widget in (self.multi_channel_add_btn, self.multi_channel_combobox, self.multi_channel_del_btn, self.multi_channel_formula, self.multi_channel_list):
+            widget.setEnabled(enable)
 
     def find_plan_item(self, plan:ScanPlan) -> QListWidgetItem:
         for item_idx in range(self.scan_plan_list.count()):
@@ -368,8 +359,12 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             name = self.scan_plan_name.text()
             # self.scan_data.name = name
             self.scan_plan_list.currentItem().setText(self.scan_data.name)
-            
+            return    
+        
+        @self.refresh_data
         def __switch_channel_mode():
+            """ 转换通道模式回调
+            """
             btn = QMessageBox.question(
                 self, '确认修改通道模式？', '确认修改通道模式？你将会失去目前所有的自变量通道设置！', 
                 buttons=QMessageBox.StandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No), 
@@ -380,20 +375,12 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                 self.scan_data.channel_formula.clear()
 
             # Set enable and text based on channel mode
-            if self.channel_mode_real_channel:
-                self.channel_mode_switch_btn.setText('真实通道')
-                self.channel_combobox_x.setEnabled(True)
-                for uicontroller in self.multi_channel_tab.children():
-                    if not isinstance(uicontroller, QtWidgets.QLayout):
-                            uicontroller.setEnabled(False)
-            else:
-                self.channel_mode_switch_btn.setText('虚拟通道')
-                self.channel_combobox_x.setEnabled(False)
-                self.channel_combobox_y.setEnabled(False)
-                self.channel_combobox_z.setEnabled(False)
-                for uicontroller in self.multi_channel_tab.children():
-                    if not isinstance(uicontroller, QtWidgets.QLayout):
-                            uicontroller.setEnabled(True)
+            self.channel_mode_switch_btn.setText('真实通道' if self.channel_mode_real_channel else '虚拟通道')
+
+            self.channel_combobox_x.setEnabled(self.channel_mode_real_channel)
+            self.channel_combobox_y.setEnabled(self.channel_mode_real_channel and self.should_scan_y.isChecked())
+            self.channel_combobox_z.setEnabled(self.channel_mode_real_channel and self.should_scan_z.isChecked())
+            self.enable_multi_channel(not self.channel_mode_real_channel)
 
         
         def __create_plan():
@@ -520,16 +507,6 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             self.channel_combobox_y.setEnabled(self.should_scan_y.isChecked() and self.channel_mode_real_channel)
             self.channel_combobox_z.setEnabled(self.should_scan_z.isChecked() and self.channel_mode_real_channel)
             return None
-        
-        
-        @self.refresh_data
-        def __axis_check_change():
-            if self.should_scan_z.isChecked():
-                self.should_scan_y.setChecked(True)
-            self.channel_combobox_y.setEnabled(self.should_scan_y.isChecked() and self.channel_mode_real_channel)
-            self.channel_combobox_z.setEnabled(self.should_scan_z.isChecked() and self.channel_mode_real_channel)
-            
-            return None
 
         def __start_scan():
             if self.scan_data:
@@ -655,13 +632,15 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                     except:
                         logger.error('Cannot load plan', exc_info=True)
             except:
-                should_backup = QMessageBox.question(
-                    self, '损坏的配置文件', '扫描计划配置文件损坏，是否备份？', 
-                    QMessageBox.StandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No), 
-                    defaultButton=QMessageBox.StandardButton.Yes
-                    )
-                if should_backup == QMessageBox.StandardButton.Yes:
-                    shutil.copyfile(self.PLAN_PATH, dst=os.path.splitext(self.PLAN_PATH)[0] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S.json'))
+                self.on_scan_plan_data_error()
 
+    def on_scan_plan_data_error(self):
+        should_backup = QMessageBox.question(
+            self, '损坏的配置文件', '扫描计划配置文件损坏，是否备份？', 
+            QMessageBox.StandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No), 
+            defaultButton=QMessageBox.StandardButton.Yes
+            )
+        if should_backup == QMessageBox.StandardButton.Yes:
+            shutil.copyfile(self.PLAN_PATH, dst=os.path.splitext(self.PLAN_PATH)[0] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S.json'))
     pass
 
