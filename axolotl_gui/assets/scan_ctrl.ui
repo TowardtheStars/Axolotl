@@ -927,7 +927,7 @@
           <item>
            <widget class="QProgressBar" name="progressbar">
             <property name="enabled">
-             <bool>false</bool>
+             <bool>true</bool>
             </property>
             <property name="maximum">
              <number>1</number>

@@ -7,7 +7,7 @@ from axolotl.util import annotation
 Event = TypeVar('Event')
 
 # In Python 3.10, it should be specified as `TypeAlias`
-EventListener = Union[Callable[[Event], None], Type[Callable]]
+EventListener = Union[Callable[[Event], None], Type[Callable[[], None]]]
 
 logger = logging.getLogger('axolotl.eventbus')
 
@@ -42,12 +42,14 @@ class EventBus:
         self.__logger.debug('Fire event %(event)s on bus %(name)s', {'event':event, 'name':self.name})
         
         for path_node in event.__class__.mro():
-            if path_node in self.__listeners.keys():
-                for listener in self.__listeners[type(event)]:
-                    try:
-                        listener(event)
-                    except:
-                        logger.error('Event listener %s error.', listener, exc_info=True)
+            for listener in self.__listeners.get(path_node, []):
+                try:
+                    self.__logger.debug('Calling event listener %s', listener)
+                    listener(event)
+                except:
+                    self.__logger.error('Event listener %s error.', listener, exc_info=True)
+        self.__logger.debug('Event listener complete!')
+
 
     def register(self, *event_types:Type[Event], listener:EventListener[Event]) -> EventListener[Event]:
         if isinstance(listener, type):

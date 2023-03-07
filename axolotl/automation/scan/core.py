@@ -34,13 +34,13 @@ print(accessable_functions)
 
 class ScanExecutor(Task):
     def __init__(self, instrument_manager:InstrumentManager, scan_plan:ScanPlan) -> None:
-        self.__manager:InstrumentManager = instrument_manager
-        self._plan:ScanPlan = scan_plan
+        self.__manager: InstrumentManager = instrument_manager
+        self._plan: ScanPlan = scan_plan
         self.running: bool = False
 
-        self._max_pass_data_layer:int = 2
-        self.__timestamp:datetime = None
-        self.__progress = 0
+        self._max_pass_data_layer: int = 2
+        self.__timestamp: datetime = None
+        self.__progress: int = 0
 
     @property
     def progress(self):
@@ -207,6 +207,7 @@ class ScanExecutor(Task):
             data = __iterate_scan(self._plan.axes_count() - 1)
         except:
             logger.error('An error occurred during scan.', exc_info=True)
+            self.running = False
 
         self.fire_event(ScanEndEvent,
             complete = self.running,
@@ -216,5 +217,3 @@ class ScanExecutor(Task):
         self.running = False
         return None
         
-    def on_finish(self, future: futures.Future[None]) -> None:
-        pass

@@ -21,6 +21,7 @@ from axolotl.automation.task import Task
 from .assets.ui_scan_ctrl import Ui_ScanControl
 from .controller import *
 from .channel_ui import RefreshEvent
+from .mediator import mediator
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +187,6 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             axes = deepcopy(self.scan_data.axes)
             zyx = 'xyz'[0:len(axes)]
             for axis_idx in range(len(axes)):
-                logger.debug('Show axis %s info', zyx[axis_idx])
                 getattr(self, 'start_' + zyx[axis_idx] + '_spinbox').setValue(axes[axis_idx].start)
                 getattr(self, 'step_' + zyx[axis_idx] + '_spinbox').setValue(axes[axis_idx].step)
                 getattr(self, 'stop_' + zyx[axis_idx] + '_spinbox').setValue(axes[axis_idx].end)
@@ -403,6 +403,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         @self.refresh_gui
         @self.refresh_data
         def __add_record_channel():
+            logger.debug('add_record_channel')
             channel_id: ChannelId = self.record_channel_combobox.currentData()
             if channel_id:  # avoid "（空）"
                 channel:Channel = self.manager.get_channel(channel_id)
@@ -520,42 +521,47 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         # endregion
 
         # region Eventlisteners
-        @SCAN_EVENT_BUS.event_listener(PostMeasureEvent)
+        # @SCAN_EVENT_BUS.event_listener(PostMeasureEvent)
         def __update_progress_bar(event:PostMeasureEvent): 
-            if event.scan_plan == self.scan_data: 
-                self.progressbar.setValue(self.progressbar.value() + 1)
-                
-                eta = int((self.scan_data.workload - self.progressbar.value()) / self.progressbar.value() * (datetime.now() - event.timestamp).total_seconds())
-                eta_m, eta_s = divmod(eta, 60)
-                eta_h, eta_m = divmod(eta_m, 60)
-                self.current_status.setText(
-                    '当前进度 {v}/{m}\t'.format(v=self.progressbar.value(), m=self.progressbar.maximum()) 
-                    + 'ETA: {h}h {min}min {sec}sec'.format(h=eta_h, min=eta_m, sec=eta_s)
-                    )
-                self.scan_plan_list.currentItem().setText(event.scan_plan.name + '...%d%%' % (event.progress / event.scan_plan.workload * 100))
-            else:
-                self.find_plan_item(event.scan_plan).setText(event.scan_plan.name + '...%d%%' % (event.progress / event.scan_plan.workload * 100))
+            if isinstance(event, PostMeasureEvent):
+                if event.scan_plan == self.scan_data: 
+                    self.progressbar.setValue(event.progress)
+                    if event.progress > 0:
+                        deltaT = (datetime.now() - event.timestamp).total_seconds()
+                        if deltaT > 1:
+                            eta = int((self.scan_data.workload - event.progress) / event.progress * deltaT)
+                            eta_m, eta_s = divmod(eta, 60)
+                            eta_h, eta_m = divmod(eta_m, 60)
+                            self.current_status.setText(
+                                f'当前进度 {self.progressbar.value():d}/{self.progressbar.maximum():d}\tETA: {eta_h:d}h {eta_m:d}min {eta_s:d}sec'
+                                )
+                    self.scan_plan_list.currentItem().setText(event.scan_plan.name + '...%d%%' % (event.progress / event.scan_plan.workload * 100))
+                else:
+                    self.find_plan_item(event.scan_plan).setText(event.scan_plan.name + '...%d%%' % (event.progress / event.scan_plan.workload * 100))
+            pass
 
 
-        @SCAN_EVENT_BUS.event_listener(ScanStartEvent)
+        # @SCAN_EVENT_BUS.event_listener(ScanStartEvent)
         def __start_scan_event(event:ScanStartEvent):
-            if event.scan_plan == self.scan_data:
-                self.start_scan.setEnabled(False)
-                self.progressbar.setEnabled(True)
-                self.progressbar.setValue(0)
-                self.stop_scan.setEnabled(True)
-                self.current_status.setText('当前进度 {v}/{m}\t'.format(v=self.progressbar.value(), m=self.progressbar.maximum()))
-                self.scan_plan_list.currentItem().setText(self.scan_data.name + '...Init!')
-            else:
-                self.find_plan_item(event.scan_plan).setText(event.scan_plan.name + '...Init!')
+            if isinstance(event, ScanStartEvent):
+                if event.scan_plan == self.scan_data:
+                    self.start_scan.setEnabled(False)
+                    self.progressbar.setEnabled(True)
+                    self.progressbar.setValue(0)
+                    self.stop_scan.setEnabled(True)
+                    self.current_status.setText('当前进度 {v}/{m}\t'.format(v=self.progressbar.value(), m=self.progressbar.maximum()))
+                    self.scan_plan_list.currentItem().setText(self.scan_data.name + '...Init!')
+                else:
+                    self.find_plan_item(event.scan_plan).setText(event.scan_plan.name + '...Init!')
 
-        @SCAN_EVENT_BUS.event_listener(ScanEndEvent)
+        # @SCAN_EVENT_BUS.event_listener(ScanEndEvent)
         def __end_scan_event(event:ScanEndEvent):
-            if event.scan_plan == self.scan_data:
-                self.start_scan.setEnabled(True)
-                self.progressbar.setEnabled(False)
-                self.stop_scan.setEnabled(False)
-            self.find_plan_item(event.scan_plan).setText(event.scan_plan.name)
+            if isinstance(event, ScanEndEvent):
+                if event.scan_plan == self.scan_data:
+                    self.start_scan.setEnabled(True)
+                    self.progressbar.setEnabled(False)
+                    self.stop_scan.setEnabled(False)
+                self.find_plan_item(event.scan_plan).setText(event.scan_plan.name)
 
         @GUI_EVENTBUS.event_listener(RefreshEvent)
         def __refresh_env_channel(event):
@@ -567,6 +573,14 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                     item.setText('{0} = {1}'.format(channel.name, channel.read()))
                     item.setData(self.CHANNEL_ID, channel_id)
                     self.record_channel_list.addItem(item)
+        
+        try:
+            mediator.scan_event_signal.connect(__start_scan_event)
+            mediator.scan_event_signal.connect(__update_progress_bar)
+            mediator.scan_event_signal.connect(__end_scan_event)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+
         # endregion
         
         # region Connections

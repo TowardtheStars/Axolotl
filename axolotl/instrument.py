@@ -6,7 +6,7 @@ from concurrent import futures
 from dataclasses import dataclass
 from enum import Enum
 from threading import Lock
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar, TypedDict
 
 import numpy as np
 
@@ -257,7 +257,6 @@ class InstrumentManager:
     def thread_executor(self):
         return self._thread_executor
 
-InstrumentManager.CHANNEL_EVENT_BUS.mute_logger(True)
 
 class VirtualInstrument(Instrument):
     def __init__(self, instruments:List[Instrument], manager:InstrumentManager, address:str, cfg_path:str) -> None:
@@ -287,18 +286,23 @@ class ChannelWriteRacePolicy(Enum):
     EXCEPTION = 0xf0            # throw exceptions
 
 
+ChannelValue = TypeVar('ChannelValue')
+class WriteFuncOpt(TypedDict):
+    interval:Optional[ChannelValue]
+
+
 class Channel:
     """Abstract channel for every readable / writeable parameter of instruments.
     """
 
     
     def __init__(self, parent:Instrument, name:str,
-        read_func:Optional[Callable]=None,  
-        write_func:Optional[Callable]=None, 
-        validator:Optional[Callable]=None, 
-        value_type:Optional[type]=None, 
-        value_dimension:int=-1,
-        default_stepping=0.01
+        read_func: Optional[Callable[[], ChannelValue]]=None,  
+        write_func: Optional[Callable[[ChannelValue, WriteFuncOpt], None]]=None, 
+        validator: Optional[Callable[[ChannelValue], bool]]=None, 
+        value_type: Optional[Type[ChannelValue]]=None, 
+        value_dimension: int=-1,
+        default_stepping: Optional[ChannelValue]=None
         ):
         """Create Channel
 
@@ -309,7 +313,7 @@ class Channel:
 
             read_func (Callable, optional): read function, requires return value and should not need any argument. Defaults to None.
 
-            write_func (Callable, optional): write function, should take 1 argument and 1 keyword arguments. Defaults to None.
+            write_func (Callable, optional): write function, should take 1 argument and 1 keyword arguments with key 'interval'. Defaults to None.
                 Example: write_func(value, interval:float=None)
 
             value_type (type, optional): type of the channel. Defaults to None.
@@ -326,15 +330,15 @@ class Channel:
         self._parent: Instrument = parent
         self._manager: InstrumentManager = parent.manager
 
-        self._read: Optional[Callable] = read_func
-        self._write: Optional[Callable] = write_func
-        self._validate: Callable = validator or (lambda x:True)
+        self._read: Optional[Callable[[], ChannelValue]] = read_func
+        self._write: Optional[Callable[[ChannelValue, WriteFuncOpt], ]] = write_func
+        self._validate: Callable[[ChannelValue], bool] = validator or (lambda x:True)
         
-        self.stepping = default_stepping
-        self.name = name
+        self.stepping: ChannelValue = default_stepping or 0.01
+        self.name:str = name
 
-        self._dimension = value_dimension
-        self._value_type = value_type
+        self._dimension: int = value_dimension
+        self._value_type: Type[ChannelValue] = value_type
 
         # self._write_thread:Timer = Timer(1, lambda:None)
         self.__occupied = False
@@ -414,7 +418,7 @@ class Channel:
         """        
         return self._manager
 
-    def read(self) -> Any:
+    def read(self) -> ChannelValue:
         """Read current value of this channel
             Should not throw error or warning under any circumstances, when failed to read, return None
         Returns:
@@ -441,7 +445,7 @@ class Channel:
         return self._dimension
 
     @property
-    def value_type(self) -> Optional[type]:
+    def value_type(self) -> Optional[Type[ChannelValue]]:
         """Value type of the channel data, defined in constructor, read only
 
         Returns:
@@ -449,7 +453,7 @@ class Channel:
         """        
         return self._value_type
 
-    def write(self, value:Any, race_policy:ChannelWriteRacePolicy=ChannelWriteRacePolicy.CHANGE_ENDPOINT) -> futures.Future:
+    def write(self, value: ChannelValue, race_policy:ChannelWriteRacePolicy = ChannelWriteRacePolicy.CHANGE_ENDPOINT) -> futures.Future:
         """Set value of this channel
         If called again when is_setting, launch racing policy
 
@@ -488,7 +492,6 @@ class Channel:
                 def run() -> bool:
                     try:
                         while len(self.__stepping_list) > 0:
-                            # self._write_thread = Timer(interval=self.parent.interval, function=run) # interval for single channel
                             
                             # Acquire instrument lock to perform actions
                             self.parent.acquire()
@@ -496,7 +499,7 @@ class Channel:
                             with self.__stepping_lock:
                                 V = self.__stepping_list.pop(0)
                                 self.fire_event(ChannelWriteStepEvent(self, V))
-                                self._write(V) # type: ignore Ignore possible None check because self.writable() has checked that
+                                self._write(V) # type: ignore. Ignore possible None check because self.writable() has checked that
                             
                             time.sleep(self.parent.interval)
                             self.parent.release()
@@ -537,8 +540,10 @@ class Channel:
         return False
     
     def __set_done(self, target_value) -> Callable[[futures.Future[bool]], None]:
-        def callback(ret:futures.Future[bool]):
-            self.manager.CHANNEL_EVENT_BUS.fire_event(ChannelWriteDoneEvent(self, ret.result(), target_value, self.read() if self.readable() else None))
+        def callback(ret: futures.Future[bool]):
+            self.manager.CHANNEL_EVENT_BUS.fire_event(
+                ChannelWriteDoneEvent(self, ret.result(), target_value, self.read() if self.readable() else None)
+            )
         return callback
         
 
@@ -562,10 +567,10 @@ class Channel:
         return self._ft.running()
     
     def __str__(self) -> str:
-        return '<Channel {name} attached to {instrument}>'.format(name=self.name, instrument=str(self.parent))
+        return f'<Channel {self.name} attached to {self.parent:s}>'
     
     def __repr__(self) -> str:
-        return '<Channel {id}>'.format(id=self.id)
+        return f'<Channel {self.id}>'
     
     def __hash__(self) -> int:
         return hash(self.id)
@@ -580,7 +585,7 @@ class Channel:
     
     @property
     def id(self) -> ChannelId:
-        return '{instrument}:{channel}'.format(instrument=self.parent.id, channel=self.__id)
+        return f'{self.parent.id}:{self.__id}'
     
     def setId(self, idx):
         self.__id = idx
@@ -596,12 +601,12 @@ class ChannelEvent:
 
 @dataclass(repr=True)
 class ChannelWriteDoneEvent(ChannelEvent):
-    success:bool
-    target_value:Any
-    current_value:Any
+    success: bool
+    target_value: ChannelValue
+    current_value: ChannelValue
 
 @dataclass(repr=True)
 class ChannelWriteStepEvent(ChannelEvent):
-    value:Any
+    value: ChannelValue
 
 
