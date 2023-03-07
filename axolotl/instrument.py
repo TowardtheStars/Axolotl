@@ -43,7 +43,7 @@ class Instrument(object):
     __type_id__ = ''
 
     @classmethod
-    def register(cls, id:str) -> Callable[[Type[T]], Type[T]]:
+    def register(cls, id:str=None) -> Callable[[Type[T]], Type[T]]:
         """Register class as valid instrument type
 
         Args:
@@ -52,6 +52,8 @@ class Instrument(object):
         Returns:
             Callable[[Type[T]], Type[T]]: @Annotation
         """
+        if not id:
+            id = cls.__name__
         def _internal(clss:Type[T]):
             # register
             logger.info('Registering instrument type `%s` to id `%s`', clss.__qualname__, id)

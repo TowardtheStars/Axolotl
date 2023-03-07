@@ -7,8 +7,13 @@ test_data/*
 AxolotlData/*
 
 # private instruments
-basic_instrument/OriginDAC
-private_instrument/*
+instruments/private_instrument
 
 # python venv
 venv
+
+# Add via VSCode
+Axolotl.zip
+instruments/basic_instrument/originDAC.py
+instruments/basic_instrument/OriginDAC/qdc_python.py
+basic_instrument/originDAC.py
