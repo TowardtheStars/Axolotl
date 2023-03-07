@@ -7,7 +7,7 @@ from threading import Timer
 from typing import Dict, Optional
 import logging
 
-from PyQt5.QtWidgets import QFrame, QGroupBox
+from PyQt5.QtWidgets import QFrame, QGroupBox, QStackedLayout
 
 from axolotl.instrument import *
 from axolotl.util import *
@@ -15,6 +15,7 @@ from axolotl.util import *
 from .assets.ui_channel_ctrl import Ui_ChannelCtrl
 from .assets.ui_channel_layout import Ui_ChannelWidget
 from .controller import *
+from .mediator import mediator
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,6 @@ class ChannelWidget(Ui_ChannelWidget, QFrame):
         
         self.enabled = enabled
         if self.enabled:
-            # controls:QWidget = load_ui('channel_layout', baseinstance=self)  # type: ignore
             self.setupUi(self)
 
             # Connect callbacks
@@ -41,19 +41,33 @@ class ChannelWidget(Ui_ChannelWidget, QFrame):
 
             self.stepping_spinbox.valueChanged.connect(self.__edit_stepping)
 
-            @InstrumentManager.CHANNEL_EVENT_BUS.event_listener(ChannelWriteDoneEvent)
+            
             def on_set_finished(event:ChannelWriteDoneEvent):
-                if event.channel == self.channel:
-                    self.set_value_lineedit.setText('')
-                    self.refresh()
+                if isinstance(event, ChannelWriteDoneEvent):
+                    if event.channel == self.channel:
+                        self.set_value_lineedit.setText('')
+                        self.refresh()
                 return
 
-            @InstrumentManager.CHANNEL_EVENT_BUS.event_listener(ChannelWriteStepEvent)
+            
             def on_set_step(event:ChannelWriteStepEvent):
-                if self.auto_refresh_checkbox.isChecked():
-                    if event.channel == self.channel:
-                        self.current_channel_readout.setText(formatter(event.value))
+                if isinstance(event, ChannelWriteStepEvent):
+                    if self.auto_refresh_checkbox.isChecked():
+                        if event.channel == self.channel:
+                            self.current_channel_readout.setText(formatter(event.value))
 
+            mediator.channel_event_signal.connect(on_set_finished)
+            mediator.channel_event_signal.connect(on_set_step)
+
+    def setupUi(self, ChannelWidget):
+        super().setupUi(ChannelWidget)
+        self.stacked_layout = QStackedLayout(self.stacked_stepping)
+        self.stacked_layout.setContentsMargins(0,0,0,0)
+        self.stacked_stepping.setLayout(self.stacked_layout)
+        self.stacked_layout.addWidget(self.stepping_spinbox)
+        self.stacked_layout.addWidget(self.stepping_label)
+        self.stacked_layout.setCurrentIndex(0)
+        
 
     @property
     def channel(self) -> Optional[Channel]:
@@ -83,10 +97,12 @@ class ChannelWidget(Ui_ChannelWidget, QFrame):
                 self.stepping_spinbox.setEnabled(True)
                 self.stepping_spinbox.setValue(self.channel.stepping)
                 self.set_value_lineedit.setEnabled(True)
+                self.stacked_layout.setCurrentIndex(0)
                 self.set_value_lineedit.setText('')
             else:
                 self.set_value_lineedit.setText('Read only')
-                self.stepping_spinbox.setSpecialValueText('Read only')
+                self.stepping_label.setText('Read only')
+                self.stacked_layout.setCurrentIndex(1)
                 self.set_value_lineedit.setEnabled(False)
                 self.stepping_spinbox.setEnabled(False)
     
@@ -114,8 +130,10 @@ class ChannelWidget(Ui_ChannelWidget, QFrame):
             if self.channel.readable():
                 self.stepping_spinbox.setValue(self.channel.stepping)
                 self.current_channel_readout.setText(formatter(self.channel.read()))
+                self.stacked_layout.setCurrentIndex(0)
             else:
-                self.stepping_spinbox.setSpecialValueText('Write Only')
+                self.stepping_label.setText('Write Only')
+                self.stacked_layout.setCurrentIndex(1)
                 self.current_channel_readout.setText('Write Only')
         return
     

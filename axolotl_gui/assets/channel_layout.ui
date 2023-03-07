@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>133</width>
+    <width>213</width>
     <height>104</height>
    </rect>
   </property>
@@ -22,7 +22,7 @@
   <property name="styleSheet">
    <string notr="true"/>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="10,10,10,10,10">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="10,10,0,10,10">
    <property name="spacing">
     <number>0</number>
    </property>
@@ -128,7 +128,7 @@
           <enum>Qt::LeftToRight</enum>
          </property>
          <property name="text">
-          <string>11111111111111111111111111111111111</string>
+          <string>0</string>
          </property>
          <property name="textFormat">
           <enum>Qt::AutoText</enum>
@@ -149,22 +149,66 @@
     </widget>
    </item>
    <item>
-    <widget class="QDoubleSpinBox" name="stepping_spinbox">
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
+    <widget class="QWidget" name="stacked_stepping" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
      </property>
-     <property name="buttonSymbols">
-      <enum>QAbstractSpinBox::NoButtons</enum>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>20</height>
+      </size>
      </property>
-     <property name="decimals">
-      <number>6</number>
-     </property>
-     <property name="maximum">
-      <double>100000000.000000000000000</double>
-     </property>
-     <property name="singleStep">
-      <double>0.001000000000000</double>
-     </property>
+     <widget class="QDoubleSpinBox" name="stepping_spinbox">
+      <property name="geometry">
+       <rect>
+        <x>9</x>
+        <y>9</y>
+        <width>104</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+      <property name="buttonSymbols">
+       <enum>QAbstractSpinBox::NoButtons</enum>
+      </property>
+      <property name="specialValueText">
+       <string/>
+      </property>
+      <property name="decimals">
+       <number>6</number>
+      </property>
+      <property name="minimum">
+       <double>0.000000000000000</double>
+      </property>
+      <property name="maximum">
+       <double>100000000.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>0.001000000000000</double>
+      </property>
+      <property name="value">
+       <double>0.000000000000000</double>
+      </property>
+     </widget>
+     <widget class="QLabel" name="stepping_label">
+      <property name="geometry">
+       <rect>
+        <x>119</x>
+        <y>9</y>
+        <width>85</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
     </widget>
    </item>
    <item>
