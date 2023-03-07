@@ -8,6 +8,7 @@ AxolotlData/*
 
 # private instruments
 basic_instrument/OriginDAC
+private_instrument/*
 
 # python venv
 venv
