@@ -15,7 +15,7 @@ from axolotl.util import *
 from .assets.ui_channel_ctrl import Ui_ChannelCtrl
 from .assets.ui_channel_layout import Ui_ChannelWidget
 from .controller import *
-from .mediator import mediator
+from .mediator import CHANNEL_EVENT_MEDIATOR
 
 logger = logging.getLogger(__name__)
 
@@ -34,40 +34,38 @@ class ChannelWidget(Ui_ChannelWidget, QFrame):
         self.enabled = enabled
         if self.enabled:
             self.setupUi(self)
+            self.stacked_layout = QStackedLayout(self.stacked_stepping)
+            self.stacked_layout.setContentsMargins(0,0,0,0)
+            self.stacked_stepping.setLayout(self.stacked_layout)
+            self.stacked_layout.addWidget(self.stepping_spinbox)
+            self.stacked_layout.addWidget(self.stepping_label)
+            self.stacked_layout.setCurrentIndex(0)
+
+            logger.debug('Widget set')
 
             # Connect callbacks
             self.channel_selection_combo_box.currentIndexChanged.connect(self.__change_channel)
             update_channel_comboboxes.append(self.channel_selection_combo_box)
 
             self.stepping_spinbox.valueChanged.connect(self.__edit_stepping)
+            GlobalSignals.refresh_signal.connect(self.refresh)
 
-            
-            def on_set_finished(event:ChannelWriteDoneEvent):
-                if isinstance(event, ChannelWriteDoneEvent):
-                    if event.channel == self.channel:
-                        self.set_value_lineedit.setText('')
-                        self.refresh()
+            logger.debug('Refresh connected')
+
+            @CHANNEL_EVENT_MEDIATOR.event_listener(ChannelWriteDoneEvent)
+            def on_set_finished(event:ChannelWriteDoneEvent):   
+                if event.channel == self.channel:
+                    self.set_value_lineedit.setText('')
+                    self.refresh()
                 return
 
             
+            @CHANNEL_EVENT_MEDIATOR.event_listener(ChannelWriteStepEvent)
             def on_set_step(event:ChannelWriteStepEvent):
-                if isinstance(event, ChannelWriteStepEvent):
-                    if self.auto_refresh_checkbox.isChecked():
-                        if event.channel == self.channel:
-                            self.current_channel_readout.setText(formatter(event.value))
-
-            mediator.channel_event_signal.connect(on_set_finished)
-            mediator.channel_event_signal.connect(on_set_step)
-
-    def setupUi(self, ChannelWidget):
-        super().setupUi(ChannelWidget)
-        self.stacked_layout = QStackedLayout(self.stacked_stepping)
-        self.stacked_layout.setContentsMargins(0,0,0,0)
-        self.stacked_stepping.setLayout(self.stacked_layout)
-        self.stacked_layout.addWidget(self.stepping_spinbox)
-        self.stacked_layout.addWidget(self.stepping_label)
-        self.stacked_layout.setCurrentIndex(0)
-        
+                if self.auto_refresh_checkbox.isChecked():
+                    if event.channel == self.channel:
+                        self.current_channel_readout.setText(formatter(event.value))
+            logger.debug('Registered callbacks')
 
     @property
     def channel(self) -> Optional[Channel]:
@@ -185,6 +183,7 @@ class ChannelCtrl(Ui_ChannelCtrl, QGroupBox):
         self._manager = manager
 
         self.setupUi(self)
+        logger.info('Background finished')
         
         self._build_channel_widget()
         
@@ -192,6 +191,7 @@ class ChannelCtrl(Ui_ChannelCtrl, QGroupBox):
         return
 
     def _build_channel_widget(self) -> None:
+        logger.info('Build Channel Widget')
         __layout_cfg_path = pathjoin(config_root, 'layout.txt')
         # Read layout settings for GUI, if not exists, default to enable all and create file
         if os.path.exists(__layout_cfg_path):
@@ -238,10 +238,10 @@ class ChannelCtrl(Ui_ChannelCtrl, QGroupBox):
     
     
     def refresh_all(self, all:bool=True):
-        GUI_EVENTBUS.fire_event(RefreshEvent())
-        for row, col in product(range(self.max_row), range(self.max_col)):
-            if all or self.channel_ui[row][col].should_auto_refresh():
-                self.channel_ui[row][col].refresh()
+        GlobalSignals.refresh_signal.emit()
+        # for row, col in product(range(self.max_row), range(self.max_col)):
+        #     if all or self.channel_ui[row][col].should_auto_refresh():
+        #         self.channel_ui[row][col].refresh()
             
     def set_all(self):
         for row, col in product(range(self.max_row), range(self.max_col)):
@@ -265,7 +265,6 @@ class ChannelCtrl(Ui_ChannelCtrl, QGroupBox):
         self.timer = Timer(function=self.auto_refresh, interval=self._auto_refresh_interval)
         self.timer.start()
 
-        
     def save_channel_ui(self):
         result = []
         for row, col in product(range(self.max_row), range(self.max_col)):
@@ -300,13 +299,7 @@ class ChannelCtrl(Ui_ChannelCtrl, QGroupBox):
                 json.dump([], file)
 
 
-
-class RefreshEvent:
-    def __init__(self) -> None:
-        pass
-
-
-__all__ = ['ChannelWidget', 'ChannelCtrl', 'RefreshEvent']
+__all__ = ['ChannelWidget', 'ChannelCtrl']
 
 
 
