@@ -1,6 +1,5 @@
-import functools
 
-from axolotl.instrument import Channel, Instrument, InstrumentManager
+from axolotl.instrument import *
 from axolotl.util import *
 
 

@@ -14,5 +14,4 @@ venv
 
 # Add via VSCode
 Axolotl.zip
-instruments/basic_instrument/
-instruments/
+doc/*

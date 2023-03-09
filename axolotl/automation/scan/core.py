@@ -29,7 +29,7 @@ accessable_functions = {
     name: np.__dict__[name] for name in __accessable_numpy_names
 }
 
-print(accessable_functions)
+logger.debug(accessable_functions)
     
 
 class ScanExecutor(Task):

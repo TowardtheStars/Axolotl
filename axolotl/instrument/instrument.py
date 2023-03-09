@@ -3,14 +3,14 @@
 import logging
 import time
 from concurrent import futures
-from dataclasses import dataclass
 from enum import Enum
 from threading import Lock
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar, TypedDict
+from typing import *
 
 import numpy as np
 
 from axolotl.util import *
+from .event import *
 
 
 __all__ = (
@@ -18,7 +18,7 @@ __all__ = (
         'Instrument', 'InstrumentManager', 'VirtualInstrument', 
         'ChannelWriteRacePolicy', 
         'Channel',
-        'ChannelEvent', 'ChannelWriteStepEvent', 'ChannelWriteDoneEvent'
+        'ChannelValue', 'WriteFuncOpt'
         )
 
 T = TypeVar("T", bound="Instrument")
@@ -596,19 +596,6 @@ class NullChannel(Channel):
     @property
     def id(self) -> ChannelId:
         return None
-        
-@dataclass(repr=True)
-class ChannelEvent:
-    channel: Channel
 
-@dataclass(repr=True)
-class ChannelWriteDoneEvent(ChannelEvent):
-    success: bool
-    target_value: ChannelValue
-    current_value: ChannelValue
-
-@dataclass(repr=True)
-class ChannelWriteStepEvent(ChannelEvent):
-    value: ChannelValue
 
 
