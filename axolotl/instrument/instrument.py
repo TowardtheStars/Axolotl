@@ -18,7 +18,7 @@ __all__ = (
         'Instrument', 'InstrumentManager', 'VirtualInstrument', 
         'ChannelWriteRacePolicy', 
         'Channel',
-        'ChannelValue', 'WriteFuncOpt'
+        'ChannelValue', 'WriteFuncOpt', 'ChannelReadFunc', 'ChannelWriteFunc'
         )
 
 T = TypeVar("T", bound="Instrument")
@@ -292,6 +292,8 @@ ChannelValue = TypeVar('ChannelValue')
 class WriteFuncOpt(TypedDict):
     interval:Optional[ChannelValue]
 
+ChannelReadFunc = Callable[[], ChannelValue]
+ChannelWriteFunc = Callable[[ChannelValue, WriteFuncOpt], None]
 
 class Channel:
     """Abstract channel for every readable / writeable parameter of instruments.
@@ -299,12 +301,13 @@ class Channel:
 
     
     def __init__(self, parent:Instrument, name:str,
-        read_func: Optional[Callable[[], ChannelValue]]=None,  
-        write_func: Optional[Callable[[ChannelValue, WriteFuncOpt], None]]=None, 
+        read_func: Optional[ChannelReadFunc]=None,  
+        write_func: Optional[ChannelWriteFunc]=None, 
         validator: Optional[Callable[[ChannelValue], bool]]=None, 
         value_type: Optional[Type[ChannelValue]]=None, 
         value_dimension: int=-1,
-        default_stepping: Optional[ChannelValue]=None
+        default_stepping: Optional[ChannelValue]=None,
+        data_fixer: Optional[Callable[[ChannelValue], ChannelValue]]=None
         ):
         """Create Channel
 
@@ -332,10 +335,11 @@ class Channel:
         self._parent: Instrument = parent
         self._manager: InstrumentManager = parent.manager
 
-        self._read: Optional[Callable[[], ChannelValue]] = read_func
-        self._write: Optional[Callable[[ChannelValue, WriteFuncOpt], ]] = write_func
+        self._read: Optional[ChannelReadFunc] = read_func
+        self._write: Optional[ChannelWriteFunc] = write_func
         self._validate: Callable[[ChannelValue], bool] = validator or (lambda x:True)
-        
+        self._fix_value: Optional[Callable[[ChannelValue], ChannelValue]] = data_fixer
+
         self.stepping: ChannelValue = default_stepping or 0.01
         self.name:str = name
 
@@ -515,12 +519,15 @@ class Channel:
                 self._ft.add_done_callback(self.__set_done(value))
             return self._ft
 
-        if self.writable() and self._validate(value):
-            if self.readable() and self.stepping and self.parent.interval > 0 and np.abs(self.stepping) > 0 and self.value_type is not str:
-                return stepped_write()
-            else:
-                self._ft = self.manager.thread_executor.submit(self._write, value) # type: ignore
-                self._ft.add_done_callback(self.__set_done(value))
+        if self.writable():
+            if (not self._validate(value)) and self._fix_value: # fix value if necessary and possible
+                value = self._fix_value(value)
+            if self._validate(value):
+                if self.readable() and self.stepping and self.parent.interval > 0 and np.abs(self.stepping) > 0 and self.value_type is not str:
+                    return stepped_write()
+                else:
+                    self._ft = self.manager.thread_executor.submit(self._write, value) # type: ignore
+                    self._ft.add_done_callback(self.__set_done(value))
                 
             return self._ft
         

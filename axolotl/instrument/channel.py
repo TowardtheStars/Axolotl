@@ -11,6 +11,7 @@ class ChannelBuilder:
     value_type: Optional[Type[ChannelValue]] = None
     value_dimension: int = -1
     default_stepping: Optional[ChannelValue] = None
+    data_fixer: Optional[Callable[[ChannelValue], ChannelValue]] = None
 
     read_func_generator:Optional[Callable[[Instrument, str], ChannelReadFunc]] = None
     write_func_generator:Optional[Callable[[Instrument, str], ChannelWriteFunc]] = None
@@ -39,7 +40,8 @@ class ChannelBuilder:
             validator = self.validator,
             value_type = self.value_type,
             value_dimension = self.value_dimension,
-            default_stepping = self.default_stepping
+            default_stepping = self.default_stepping,
+            data_fixer = self.data_fixer
             )
 
 class ChannelModifier:
@@ -51,11 +53,12 @@ class ChannelModifier:
 
 
 class RangedModifier(ChannelModifier):
-    def __init__(self, min=None, max=None, min_closure=False, max_closure=False) -> None:
+    def __init__(self, min=None, max=None, min_closure=True, max_closure=True, add_fixer=True) -> None:
         self._min = min
         self._max = max
         self._min_closure = min_closure
         self._max_closure = max_closure
+        self._fixer = add_fixer
 
     def _make_min_validator(self):
         if self._min:
@@ -76,8 +79,16 @@ class RangedModifier(ChannelModifier):
             return lambda x: True
 
     def modify(self, builder:ChannelBuilder):
-        min_validator = self._make_min_validator()
-        max_validator = self._make_max_validator()
-        builder.validator = lambda x: (min_validator(x) and max_validator(x))
+        min_validate = self._make_min_validator()
+        max_validate = self._make_max_validator()
+        builder.validator = lambda x: (min_validate(x) and max_validate(x))
+        if self._fixer:
+            def fixer(v):
+                if not min_validate(v) and self._min_closure and self._min:
+                    return self._min
+                if not max_validate(v) and self._max_closure and self._max:
+                    return self._max
+                return v
+            builder.data_fixer = fixer
 
 
