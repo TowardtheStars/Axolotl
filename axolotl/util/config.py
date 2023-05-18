@@ -168,6 +168,7 @@ class ConfigDictEntry:
 
 
 class Config:
+    CFG_ROOT = cfg_root
 
     def __init__(self, name:str, template:Union[dict, ConfigDictEntry]) -> None:
         self._name = name
@@ -194,7 +195,7 @@ class Config:
             s = self.name
         else:
             s = self.name + '.yml'
-        return os.path.abspath(joinpath(cfg_root, s))
+        return os.path.abspath(joinpath(self.CFG_ROOT, s))
 
     def load(self):
         if fileexists(self.abspath):

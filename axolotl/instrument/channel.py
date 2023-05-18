@@ -52,7 +52,7 @@ class ChannelModifier:
         pass
 
 
-class RangedModifier(ChannelModifier):
+class RangeModifier(ChannelModifier):
     def __init__(self, min=None, max=None, min_closure=True, max_closure=True, add_fixer=True) -> None:
         self._min = min
         self._max = max
@@ -92,3 +92,14 @@ class RangedModifier(ChannelModifier):
             builder.data_fixer = fixer
 
 
+class MakeFloat(ChannelModifier):
+    def modify(self, builder: ChannelBuilder):
+        if builder.write_func:
+            builder.write_func = lambda x: builder.write_func(float(x))
+        if builder.read_func:
+            builder.read_func = lambda: float(builder.read_func())
+
+        if builder.write_func_generator:
+            builder.write_func_generator = lambda parent, str: lambda x: builder.write_func_generator(parent, str)(float(x))
+        if builder.read_func_generator:
+            builder.read_func_generator = lambda parent, str: lambda: float(builder.read_func_generator(parent, str)())

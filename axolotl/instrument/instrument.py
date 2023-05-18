@@ -43,6 +43,7 @@ class Instrument(object):
     __type_id__ = ''
 
     @classmethod
+    @annotation
     def register(cls, id:str=None) -> Callable[[Type[T]], Type[T]]:
         """Register class as valid instrument type
 
@@ -72,7 +73,6 @@ class Instrument(object):
         self._manager:'InstrumentManager' = manager
         self._address:str = address
         self.interval:float = 0.01
-        self._read_config(cfg_path)
 
         self._id = ''
 
@@ -88,14 +88,6 @@ class Instrument(object):
     @property
     def address(self) -> str:
         return self._address
-
-    def _read_config(self, cfg_path:str):
-        """Empty method for users to read custom config file
-
-        Args:
-            cfg_path (str): config path, root at axolotl/config
-        """        
-        pass
     
     def channel_list(self) -> Tuple['Channel']:
         """Provide a list of channels to operate
@@ -327,6 +319,7 @@ class Channel:
 
             default_stepping (float, optional): default stepping distance of this channel. Defaults to 0.01.
 
+            data_fixer (Callable, Optional): fix write input when invalid input detected
         Returns:
             Channel: a readable/writeable parameter interface
         """         

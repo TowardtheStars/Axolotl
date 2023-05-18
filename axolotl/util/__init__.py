@@ -4,5 +4,5 @@ from .misc import *
 from .event import *
 
 __all__ = [
-    'ConfigEntry', 'Config', 'ConfigDictEntry', 'program_root', 'config_root', 'data_root', 'EventBus'
+    'ConfigEntry', 'Config', 'ConfigDictEntry', 'program_root', 'config_root', 'data_root', 'EventBus', 'annotation'
 ]
