@@ -145,13 +145,13 @@ def record_parameter(event:ScanStartEvent):
     result.append('')
     result.append('Channel formula:')
     result.extend([
-        '{channel_name} = {formula}'.format(channel_name=k, formula=v)
+        '{channel_name} = {formula}'.format(channel_name=event.instrument_manager.get_channel_strong(k).name, formula=v)
         for k, v in plan.channel_formula.items()
     ])
     result.append('')
     result.append(f'Read @{datetime.now().strftime(scan_config["time_format"])}')
     
-    result.append(', '.join(plan.scan_channel))
+    result.append(', '.join([event.instrument_manager.get_channel_strong(chid).name for chid in plan.scan_channel]))
     result.append('')
     result.append('Extra Info:')
     result.append(plan.extra_info)
@@ -205,6 +205,7 @@ class DrawLine:
         with MatplotlibBackendEnv('agg'):
             for i in range(yss.shape[0]):
                 fig, ax = plt.subplots(**self.fig_config)
+                fig.suptitle(event.scan_plan.name + '\n' + event.timestamp.strftime(scan_config['time_format']), fontweight='bold')
                 ys = yss[i]
                 logger.debug('ys[%d]=%s', i, ys)
                 ax.plot(xs, ys, **self.plot_config)
@@ -230,6 +231,7 @@ class DrawLine:
             with MatplotlibBackendEnv('agg'):
                 for i in range(len(yss)):
                     fig, ax = plt.subplots(**self.fig_config)
+                    fig.suptitle(event.scan_plan.name + '\n' + event.timestamp.strftime(scan_config['time_format']), fontweight='bold')
                     ax.plot(xs, yss[i], **self.plot_config)
                     ax.set_xlabel(event.scan_plan.axes[0].name)
                     ax.set_ylabel(scan_channel_names[i])
@@ -237,7 +239,7 @@ class DrawLine:
                     fig.savefig(os.path.join(path, '{name}[x]={value}[{0:d}].png'.format(i + 1, value=event.current_axis_stack[-1], name=event.scan_plan.axes[0].name)), **self.save_config)
                     plt.close(fig)
     
-
+logger.setLevel(logging.DEBUG)
 @SCAN_EVENT_BUS.event_listener(AxisPostIterateEvent)
 class DrawContour:
     def __init__(self) -> None:
@@ -259,17 +261,18 @@ class DrawContour:
             if line_data_draw_2d:
                 data = [
                     {
-                    'x': [scan_data.x for scan_data in event.data.data],
+                    'x': event.scan_plan.axes[0].get_range(),
                     'y': event.data.data[0].data[0, :],
                     'z': [data.data[i, :] for data in event.data.data]
                     } for i in range(1, event.data.data[0].data.shape[0])]
             elif point_data_draw_2d:
+                logger.debug(event.data.data)
                 data = [
                     {
-                    'x': [scan_data.x for scan_data in event.data.data],
-                    'y': event.data.data[0].data[0, :],
-                    'z': [data.data[i, :] for data in event.data.data]
-                    } for i in range(1, event.data.data[0].data.shape[0])]
+                    'x': event.scan_plan.axes[0].get_range(),
+                    'y': event.scan_plan.axes[1].get_range(),
+                    'z': np.atleast_2d([[datum2.data[i] for datum2 in datum.data] for datum in event.data.data])
+                    } for i in range(len(event.scan_plan.scan_channel))]
             if data:
                 self.__draw(event, data, _save_mode)
 
@@ -280,13 +283,15 @@ class DrawContour:
         for i, d in enumerate(data):
             with MatplotlibBackendEnv('agg'):
                 fig, ax = plt.subplots(**self.fig_config)
+                fig.suptitle(event.scan_plan.name + '\n' + event.timestamp.strftime(scan_config['time_format']), fontweight='bold')
                 X, Y = np.meshgrid(d['x'], d['y'])
                 Z = np.array(d['z'])
                 ax.contourf(X, Y, Z, **self.contour_config)
                 ax.set_xlabel(event.scan_plan.axes[0].name)
                 ax.set_ylabel(event.scan_plan.axes[1].name if mode == SaveMode.FILE_PER_Y and event.axis_stack_id == 1 else 'Y')
+                logger.debug(env_str)
                 ax.set_title(env_str)
-                fig.savefig(os.path.join(path, '{value}[{0:d}].png'.format(i + 1, name=event.scan_plan.axes[0].name)), **self.save_config)
+                fig.savefig(os.path.join(path, f'{event.scan_plan.axes[i].name}[{i + 1:d}].png'), **self.save_config)
                 plt.close(fig)
 
 

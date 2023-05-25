@@ -22,10 +22,32 @@ from .assets.ui_scan_ctrl import Ui_ScanControl
 from .controller import *
 from .mediator import SCAN_EVENT_MEDIATOR
 
-logger = logging.getLogger(__name__)
+# 垃圾要干湿分离
+# 前后端也得分离
 
+logger = logging.getLogger(__name__)        
 
+scan_plan_tasks: List[ScanExecutor] = []
 
+PLAN_PATH = pathjoin(data_root, 'gui', 'scan_plans.json')
+
+def load_plans(manager:InstrumentManager):
+    if os.path.exists(PLAN_PATH):
+        logger.info('Load plans')
+        with open(PLAN_PATH, encoding='utf8', mode='r') as file:
+            jsonlst:list = json.load(file)
+        for jsonobj in jsonlst:
+            try:    # 循环内 try，不阻塞其他任务计划加载
+                plan = ScanPlan.fromJson(jsonobj)
+                scan_plan_tasks.append(ScanExecutor(manager, plan))
+            except:
+                logger.error('Cannot load plan', exc_info=True)
+            
+def save_plans():
+    with open(PLAN_PATH, mode='w', encoding='utf8') as file:
+        json.dump([task.plan for task in scan_plan_tasks], 
+            fp=file, ensure_ascii=False, cls=ScanPlan.encoder_cls(), indent=2, sort_keys=True
+            )
 
 class ScanCtrl(Ui_ScanControl, QGroupBox):
     
@@ -33,6 +55,8 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
     def __init__(self, manager:InstrumentManager, *args, **kwargs):
         super(Ui_ScanControl, self).__init__()
         super(QGroupBox, self).__init__(*args, **kwargs)
+
+        load_plans(manager)
 
         self.channel_mode_real_channel = True
         self._manager = manager
@@ -59,7 +83,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         ])
 
         self.refreshing_gui = False
-        self.__refresh_gui()    # will not load any plan due to no plan selected, this one is for disabling widgets
+        self.__refresh_plan_info_display()    # will not load any plan due to no plan selected, this one is for disabling widgets
         
         
     @property
@@ -91,35 +115,54 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
     def CHANNEL_FORMULA(self) -> int:
         return 2 + Qt.ItemDataRole.UserRole
     
-    @property
-    def PLAN_PATH(self) -> str:
-        return pathjoin(data_root, 'gui', 'scan_plans.json')
 
-    @property
+    
     def scan_data(self) -> Optional[ScanPlan]:
         """ Return current selected scan plan
         Optional, can return None if no plan is selected
         """
-        try:
-            return (self.scan_plan_list.currentItem().data(self.PLAN))
-        except:
-            pass
+        item = self.scan_plan_list.currentItem()
+        if item:
+            try:
+                plan_idx:int = item.data(self.PLAN)
+                return scan_plan_tasks[plan_idx].plan
+            except Exception as e:
+                logger.error(e, exc_info=True)
         return None
     
-    def __refresh_gui(self):
+    def scan_task(self) -> Optional[Task]:
+        item = self.scan_plan_list.currentItem()
+        if item:
+            try:
+                plan_idx:int = item.data(self.PLAN)
+                return scan_plan_tasks[plan_idx]
+            except Exception as e:
+                logger.error(e, exc_info=True)
+        return None
+    
+    def set_current_plan(self, plan:ScanPlan):
+        try:
+            plan_idx:int = self.scan_plan_list.currentItem().data(self.PLAN)
+            scan_plan_tasks[plan_idx].plan = plan
+        except Exception as e:
+            logger.error(e, exc_info=True)
+
+        return None
+    
+    def __refresh_plan_info_display(self):
         logger.debug('Refresh GUI')
 
         self.refreshing_gui = True
-        if self.scan_data is not None:
+        if self.scan_data() is not None:
 
-            logger.debug('Display ScanPlan %s', self.scan_data)
+            logger.debug('Display ScanPlan %s', self.scan_data())
             self.tabWidget.setEnabled(True)
             # 扫描计划名称
-            self.scan_plan_name.setText(self.scan_data.name)
+            self.scan_plan_name.setText(self.scan_data().name)
 
             # region 控制的环境变量通道
             self.record_channel_list.clear()
-            for channel_id in self.scan_data.record_env_channel:
+            for channel_id in self.scan_data().record_env_channel:
                 channel = self.manager.get_channel(channel_id)
                 if channel:
                     item = QListWidgetItem()
@@ -129,14 +172,14 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             # endregion
 
             # 保存路径
-            self.save_path.setText(self.scan_data.save_path)
+            self.save_path.setText(self.scan_data().save_path)
 
             # 额外文本信息
-            self.extra_info_text.setPlainText(self.scan_data.extra_info)
+            self.extra_info_text.setPlainText(self.scan_data().extra_info)
 
             # region 扫描通道
             self.scan_channel_list.clear()
-            for channel_id in self.scan_data.scan_channel:
+            for channel_id in self.scan_data().scan_channel:
                 channel = self.manager.get_channel(channel_id)
                 if channel:
                     item = QListWidgetItem()
@@ -147,12 +190,12 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             
             # region 扫描轴信息
             
-            self.channel_mode_real_channel = self.scan_data.plugin_config.get('real_channel', True)
+            self.channel_mode_real_channel = self.scan_data().plugin_config.get('real_channel', True)
             self.channel_mode_switch_btn.setText('真实通道' if self.channel_mode_real_channel else '虚拟通道')
 
-            self.should_scan_z.setChecked(self.scan_data.axes_count() == 3)
+            self.should_scan_z.setChecked(self.scan_data().axes_count() == 3)
             self.channel_combobox_z.setEnabled(self.should_scan_z.isChecked() and self.channel_mode_real_channel)
-            self.should_scan_y.setChecked(self.scan_data.axes_count() >= 2)
+            self.should_scan_y.setChecked(self.scan_data().axes_count() >= 2)
             self.channel_combobox_y.setEnabled(self.should_scan_y.isChecked() and self.channel_mode_real_channel)
             self.channel_combobox_x.setEnabled(self.channel_mode_real_channel)
 
@@ -160,7 +203,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             if self.channel_mode_real_channel:
                 # 加载真实通道
                 
-                for chid, axis in self.scan_data.channel_formula.items():
+                for chid, axis in self.scan_data().channel_formula.items():
                     combobox: QComboBox = getattr(self, 'channel_combobox_' + axis)
                     channel = self.manager.get_channel(chid)
                     if channel:
@@ -173,7 +216,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                 # 加载虚拟通道
 
                 self.multi_channel_list.clear()
-                for chid, formula in self.scan_data.channel_formula.items():
+                for chid, formula in self.scan_data().channel_formula.items():
                     channel = self.manager.get_channel(chid)
                     if channel:
                         item = QListWidgetItem(self.multi_channel_list)
@@ -183,7 +226,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                         self.multi_channel_list.addItem(item)
             
             # 轴基本信息
-            axes = deepcopy(self.scan_data.axes)
+            axes = deepcopy(self.scan_data().axes)
             zyx = 'xyz'[0:len(axes)]
             for axis_idx in range(len(axes)):
                 getattr(self, 'start_' + zyx[axis_idx] + '_spinbox').setValue(axes[axis_idx].start)
@@ -194,12 +237,12 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             
 
             # 其他设置页面
-            self.recover_checkBox.setChecked(self.scan_data.plugin_config.get('reset2init', False))
-            self.draw_1d_checkBox.setChecked(self.scan_data.plugin_config.get('draw_1d', False))
-            self.draw_2d_checkBox.setChecked(self.scan_data.plugin_config.get('draw_2d', False))
+            self.recover_checkBox.setChecked(self.scan_data().plugin_config.get('reset2init', False))
+            self.draw_1d_checkBox.setChecked(self.scan_data().plugin_config.get('draw_1d', False))
+            self.draw_2d_checkBox.setChecked(self.scan_data().plugin_config.get('draw_2d', False))
             
             
-            if self.task and self.task.get_thread().running() and self.task._plan == self.scan_data:
+            if self.task and self.task.get_thread().running() and self.task.plan == self.scan_data():
                 for controller in self.get_plan_controllers():
                     controller.setEnabled(False)
 
@@ -209,7 +252,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         return
     
     @annotation
-    def refresh_gui(self, func):
+    def refresh_display(self, func):
         """ Annotation for controllers to refresh info display from scan plan data
         """
         
@@ -223,10 +266,11 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                 except:
                     result = func()
             try:
-                self.__refresh_gui()
-            except :
-                if self.scan_data:
+                self.__refresh_plan_info_display()
+            except Exception as e:
+                if self.scan_data():
                     self.on_scan_plan_data_error()
+                logger.error(e, exc_info=True)
             return result
 
         return wrapped
@@ -304,18 +348,10 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             )
             
             logger.debug(plan)
-            item = self.scan_plan_list.currentItem()
-            if not item:
-                self.scan_plan_list.setCurrentItem(self.scan_plan_list.item(0))
-            item = self.scan_plan_list.currentItem()
-            if item:
-                item.setData(self.PLAN, plan)
-                item.setText(plan.name)
+            self.set_current_plan(plan)
 
             # save plans
-            with open(self.PLAN_PATH, mode='w', encoding='utf8') as file:
-                json.dump([self.scan_plan_list.item(_id).data(self.PLAN) for _id in range(self.scan_plan_list.count())], 
-                        fp=file, ensure_ascii=False, cls=ScanPlan.encoder_cls(), indent=2, sort_keys=True)
+            save_plans()
     
     @annotation
     def refresh_data(self, func):
@@ -341,13 +377,12 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         for widget in (self.multi_channel_add_btn, self.multi_channel_combobox, self.multi_channel_del_btn, self.multi_channel_formula, self.multi_channel_list):
             widget.setEnabled(enable)
 
-    def find_plan_item(self, plan:ScanPlan) -> QListWidgetItem:
-        for item_idx in range(self.scan_plan_list.count()):
-            item:QListWidgetItem = self.scan_plan_list.item(item_idx)
-            if item.data(self.PLAN) == plan:
-                return item
-        logger.warn('Unmanaged plan detected!, %s' + plan)
-        return None
+    def find_plan_item(self, task:Task) -> QListWidgetItem:
+        idx = scan_plan_tasks.index(task)
+        if idx < 0 or idx >= self.scan_plan_list.count():
+            logger.warn("Unmannaged task!")
+            return None
+        return self.scan_plan_list.item(idx)
     
     def connect_callbacks(self):
 
@@ -357,7 +392,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         def __change_plan_name():
             name = self.scan_plan_name.text()
             # self.scan_data.name = name
-            self.scan_plan_list.currentItem().setText(self.scan_data.name)
+            self.scan_plan_list.currentItem().setText(name)
             return    
         
         @self.refresh_data
@@ -371,7 +406,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                 )
             if btn == QMessageBox.StandardButton.Yes:
                 self.channel_mode_real_channel = not self.channel_mode_real_channel
-                self.scan_data.channel_formula.clear()
+                self.scan_data().channel_formula.clear()
 
             # Set enable and text based on channel mode
             self.channel_mode_switch_btn.setText('真实通道' if self.channel_mode_real_channel else '虚拟通道')
@@ -383,23 +418,23 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
 
         
         def __create_plan():
-            item = QListWidgetItem('扫描计划', self.scan_plan_list)
-            item.setData(self.PLAN, ScanPlan(_name='扫描计划'))
+            item = QListWidgetItem(parent = self.scan_plan_list)
+            item.setData(self.PLAN, len(scan_plan_tasks))
+            scan_plan_tasks.append(ScanExecutor(self.manager, ScanPlan()))
             self.scan_plan_list.addItem(item)
-            with open(self.PLAN_PATH, mode='w', encoding='utf8') as file:
-                json.dump([self.scan_plan_list.item(_id).data(self.PLAN) for _id in range(self.scan_plan_list.count())], 
-                        fp=file, ensure_ascii=False, cls=ScanPlan.encoder_cls(), indent=2, sort_keys=True)
+
+            save_plans()
 
         
         def __del_plan():
             removing = self.scan_plan_list
             for item in removing.selectedIndexes():
+                scan_plan_tasks[item.data(self.PLAN)] = None
                 removing.takeItem(item.row())
-            with open(self.PLAN_PATH, mode='w', encoding='utf8') as file:
-                    json.dump([self.scan_plan_list.item(_id).data(self.PLAN) for _id in range(self.scan_plan_list.count())], 
-                            fp=file, ensure_ascii=False, cls=ScanPlan.encoder_cls(), indent=2, sort_keys=True)
+            scan_plan_tasks = [task for task in scan_plan_tasks if task]
+            save_plans()
 
-        @self.refresh_gui
+        @self.refresh_display
         @self.refresh_data
         def __add_record_channel():
             logger.debug('add_record_channel')
@@ -424,7 +459,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                 self.record_channel_list.takeItem(item.row())
             
 
-        @self.refresh_gui
+        @self.refresh_display
         @self.refresh_data
         def __add_scan_channel():
             channel_id: str = self.scan_channel_combobox.currentData()
@@ -453,10 +488,10 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             if len(directory) > 0:
                 logger.debug('Changed save directory to %s', directory)
                 self.save_path.setText(directory)
-                self.scan_data.save_path = directory
+                self.scan_data().save_path = directory
 
         
-        @self.refresh_gui
+        @self.refresh_display
         @self.refresh_data
         def __add_multi_channel():
             channel_id = self.multi_channel_combobox.currentData()
@@ -492,7 +527,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             if item:
                 item.setData(self.CHANNEL_FORMULA, self.multi_channel_formula.toPlainText())
             
-        @self.refresh_gui
+        @self.refresh_display
         def __change_current_plan():
             pass
 
@@ -509,25 +544,26 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             return None
 
         def __start_scan():
-            if self.scan_data:
-                self.task = ScanExecutor(self.manager, self.scan_data)
-                self.progressbar.setMaximum(self.scan_data.workload)
-                self.task.start()
+            if self.scan_data():
+                # self.task = ScanExecutor(self.manager, self.scan_data())
+                
+                self.progressbar.setMaximum(self.scan_data().workload)
+                self.scan_task().start()
             
         def __stop_scan():
-            self.task.cancel()
+            self.scan_task().cancel()
 
         # endregion
 
         # region Eventlisteners
         @SCAN_EVENT_MEDIATOR.event_listener(PostMeasureEvent)
         def __update_progress_bar(event:PostMeasureEvent): 
-            if event.scan_plan == self.scan_data: 
+            if event.scan_plan == self.scan_data(): 
                 self.progressbar.setValue(event.progress)
                 if event.progress > 0:
                     deltaT = (datetime.now() - event.timestamp).total_seconds()
                     if deltaT > 1:
-                        eta = int((self.scan_data.workload - event.progress) / event.progress * deltaT)
+                        eta = int((self.scan_data().workload - event.progress) / event.progress * deltaT)
                         eta_m, eta_s = divmod(eta, 60)
                         eta_h, eta_m = divmod(eta_m, 60)
                         self.current_status.setText(
@@ -535,48 +571,47 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
                             )
                 self.scan_plan_list.currentItem().setText(event.scan_plan.name + '...%d%%' % (event.progress / event.scan_plan.workload * 100))
             else:
-                self.find_plan_item(event.scan_plan).setText(event.scan_plan.name + '...%d%%' % (event.progress / event.scan_plan.workload * 100))
+                self.find_plan_item(event.task).setText(event.scan_plan.name + '...%d%%' % (event.progress / event.scan_plan.workload * 100))
             pass
 
 
         @SCAN_EVENT_MEDIATOR.event_listener(ScanStartEvent)
         def __start_scan_event(event:ScanStartEvent):
-            if event.scan_plan == self.scan_data:
+            if event.scan_plan == self.scan_data():
                 self.start_scan.setEnabled(False)
                 self.progressbar.setEnabled(True)
                 self.progressbar.setValue(0)
                 self.stop_scan.setEnabled(True)
                 self.current_status.setText('当前进度 {v}/{m}\t'.format(v=self.progressbar.value(), m=self.progressbar.maximum()))
-                self.scan_plan_list.currentItem().setText(self.scan_data.name + '...Init!')
+                self.scan_plan_list.currentItem().setText(self.scan_data().name + '...Init!')
             else:
-                self.find_plan_item(event.scan_plan).setText(event.scan_plan.name + '...Init!')
+                self.find_plan_item(event.task).setText(event.scan_plan.name + '...Init!')
 
         @SCAN_EVENT_MEDIATOR.event_listener(ScanEndEvent)
         def __end_scan_event(event:ScanEndEvent):
-            if event.scan_plan == self.scan_data:
+            if event.scan_plan == self.scan_data():
                 self.start_scan.setEnabled(True)
                 self.progressbar.setEnabled(False)
                 self.stop_scan.setEnabled(False)
-            self.find_plan_item(event.scan_plan).setText(event.scan_plan.name)
+                if event.complete:
+                    self.current_status.setText('完成！')
+                else:
+                    self.current_status.setText('停止')
+            self.find_plan_item(event.task).setText(event.scan_plan.name)
 
         
         def __refresh_env_channel():
             self.record_channel_list.clear()
-            for channel_id in self.scan_data.record_env_channel:
-                channel = self.manager.get_channel(channel_id)
-                if channel:
-                    item = QListWidgetItem()
-                    item.setText('{0} = {1}'.format(channel.name, channel.read()))
-                    item.setData(self.CHANNEL_ID, channel_id)
-                    self.record_channel_list.addItem(item)
+            if self.scan_data():
+                for channel_id in self.scan_data().record_env_channel:
+                    channel = self.manager.get_channel(channel_id)
+                    if channel:
+                        item = QListWidgetItem()
+                        item.setText('{0} = {1}'.format(channel.name, channel.read()))
+                        item.setData(self.CHANNEL_ID, channel_id)
+                        self.record_channel_list.addItem(item)
         
         GlobalSignals.refresh_signal.connect(__refresh_env_channel)
-        try:
-            SCAN_EVENT_MEDIATOR.scan_event_signal.connect(__start_scan_event)
-            SCAN_EVENT_MEDIATOR.scan_event_signal.connect(__update_progress_bar)
-            SCAN_EVENT_MEDIATOR.scan_event_signal.connect(__end_scan_event)
-        except Exception as e:
-            logger.error(e, exc_info=True)
 
         # endregion
         
@@ -629,21 +664,10 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
 
     
     def load_plans(self):
-        if os.path.exists(self.PLAN_PATH):
-            logger.info('Load plans into GUI')
-            try:
-                with open(self.PLAN_PATH, encoding='utf8', mode='r') as file:
-                    jsonlst:list = json.load(file)
-                for jsonobj in jsonlst:
-                    try:
-                        plan = ScanPlan.fromJson(jsonobj)
-                        item = QListWidgetItem(plan.name, parent=self.scan_plan_list)
-                        item.setData(self.PLAN, plan)
-                        self.scan_plan_list.addItem(item)
-                    except:
-                        logger.error('Cannot load plan', exc_info=True)
-            except:
-                self.on_scan_plan_data_error()
+        for i, plan in enumerate(scan_plan_tasks):
+            item = QListWidgetItem(plan.get_name(), parent=self.scan_plan_list)
+            item.setData(self.PLAN, i)
+            self.scan_plan_list.addItem(item)
 
     def on_scan_plan_data_error(self):
         should_backup = QMessageBox.question(
@@ -652,6 +676,6 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             defaultButton=QMessageBox.StandardButton.Yes
             )
         if should_backup == QMessageBox.StandardButton.Yes:
-            shutil.copyfile(self.PLAN_PATH, dst=os.path.splitext(self.PLAN_PATH)[0] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S.json'))
+            shutil.copyfile(PLAN_PATH, dst=os.path.splitext(PLAN_PATH)[0] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S.json'))
     pass
 

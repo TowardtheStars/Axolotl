@@ -9,6 +9,7 @@ from axolotl.instrument import *
 from axolotl.util import EventBus, Event, annotation
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def event2signal(event_type: Event, bus: EventBus, signal: pyqtSignal):

@@ -6,6 +6,7 @@ import numpy as np
 
 from axolotl.instrument import *
 from axolotl.util import EventBus
+from ..task import Task
 
 from .data import *
 
@@ -20,6 +21,7 @@ class ScanEvent:
     timestamp: datetime
     instrument_manager: 'InstrumentManager'
     progress: int
+    task: 'Task'
 
     
 @dataclass

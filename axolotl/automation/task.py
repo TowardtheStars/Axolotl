@@ -1,7 +1,7 @@
 
 from concurrent import futures
 import logging
-from typing import Any, TypeVar
+from typing import Any, List, TypeVar
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ def getTaskManager() -> TaskManager:
 
 T = TypeVar('T')
 class Task:
-    def __init__(self) -> None:
+    def __init__(self, name = '') -> None:
         self._thread: futures.Future = None
 
     def get_thread(self) -> futures.Future:
@@ -37,6 +37,9 @@ class Task:
         self.on_start()
         self._thread = getTaskManager().thread_pool.submit(self.run)
         futures.as_completed([self._thread])
+        
+    def is_running(self) -> bool:
+        return self._thread.running()
 
     def on_start(self):
         pass
@@ -47,5 +50,11 @@ class Task:
     def cancel(self) -> bool:
         return self._thread.cancel()
     
-
+    def get_name(self) -> str:
+        return ''
     
+
+class TaskList:
+    def __init__(self) -> None:
+        self.tasks: List[Task] = []
+        
