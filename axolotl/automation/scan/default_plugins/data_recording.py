@@ -286,12 +286,29 @@ class DrawContour:
                 fig.suptitle(event.scan_plan.name + '\n' + event.timestamp.strftime(scan_config['time_format']), fontweight='bold')
                 X, Y = np.meshgrid(d['x'], d['y'])
                 Z = np.array(d['z'])
-                ax.contourf(X, Y, Z, **self.contour_config)
+                cf = ax.contourf(X, Y, Z, **self.contour_config)
                 ax.set_xlabel(event.scan_plan.axes[0].name)
                 ax.set_ylabel(event.scan_plan.axes[1].name if mode == SaveMode.FILE_PER_Y and event.axis_stack_id == 1 else 'Y')
                 logger.debug(env_str)
                 ax.set_title(env_str)
+                fig.colorbar(cf, ax = ax, label = event.scan_plan.axes[i].name)
                 fig.savefig(os.path.join(path, f'{event.scan_plan.axes[i].name}[{i + 1:d}].png'), **self.save_config)
                 plt.close(fig)
 
+        # 总图
+        with MatplotlibBackendEnv('agg'):
+            fig, ax = plt.subplots(int(np.ceil(len(data) / 2)), 2, **self.fig_config)
+            fig.suptitle(event.scan_plan.name + '\n' + event.timestamp.strftime(scan_config['time_format']), fontweight='bold')
+            for i, d in enumerate(data):
+                X, Y = np.meshgrid(d['x'], d['y'])
+                Z = np.array(d['z'])
+                cf = ax[i].contourf(X, Y, Z, **self.contour_config)
+                ax[i].set_xlabel(event.scan_plan.axes[0].name)
+                ax[i].set_ylabel(event.scan_plan.axes[1].name if mode == SaveMode.FILE_PER_Y and event.axis_stack_id == 1 else 'Y')
+                logger.debug(env_str)
+                ax[i].set_title(env_str)
+                fig.colorbar(cf, ax = ax[i], label = event.scan_plan.axes[i].name)
+            fig.savefig(os.path.join(path, f'{event.scan_plan.name}.png'), **self.save_config)
+            plt.close(fig)
+            
 

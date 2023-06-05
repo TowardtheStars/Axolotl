@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'd:\Documents\Proj\Axolotl\axolotl\gui\assets\scan_ctrl.ui'
+# Form implementation generated from reading ui file 'd:\Documents\Proj\Axolotl\axolotl_gui\assets\scan_ctrl.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.7
 #
@@ -53,14 +53,14 @@ class Ui_ScanControl(object):
         self.delete_scan_plan_btn.setObjectName("delete_scan_plan_btn")
         self.gridLayout_2.addWidget(self.delete_scan_plan_btn, 0, 1, 1, 1)
         self.start_scan_queue_btn = QtWidgets.QPushButton(self.widget)
-        self.start_scan_queue_btn.setEnabled(False)
+        self.start_scan_queue_btn.setEnabled(True)
         self.start_scan_queue_btn.setObjectName("start_scan_queue_btn")
         self.gridLayout_2.addWidget(self.start_scan_queue_btn, 1, 0, 1, 1)
         self.new_scan_plan_btn = QtWidgets.QPushButton(self.widget)
         self.new_scan_plan_btn.setObjectName("new_scan_plan_btn")
         self.gridLayout_2.addWidget(self.new_scan_plan_btn, 0, 0, 1, 1)
         self.stop_scan_queue_btn = QtWidgets.QPushButton(self.widget)
-        self.stop_scan_queue_btn.setEnabled(False)
+        self.stop_scan_queue_btn.setEnabled(True)
         self.stop_scan_queue_btn.setObjectName("stop_scan_queue_btn")
         self.gridLayout_2.addWidget(self.stop_scan_queue_btn, 1, 1, 1, 1)
         self.verticalLayout.addLayout(self.gridLayout_2)
@@ -423,7 +423,7 @@ class Ui_ScanControl(object):
         self.current_status.setObjectName("current_status")
         self.verticalLayout_3.addWidget(self.current_status)
         self.progressbar = QtWidgets.QProgressBar(self.frame)
-        self.progressbar.setEnabled(False)
+        self.progressbar.setEnabled(True)
         self.progressbar.setMaximum(1)
         self.progressbar.setProperty("value", 0)
         self.progressbar.setOrientation(QtCore.Qt.Horizontal)

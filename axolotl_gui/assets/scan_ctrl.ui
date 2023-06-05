@@ -91,7 +91,7 @@
         <item row="1" column="0">
          <widget class="QPushButton" name="start_scan_queue_btn">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="text">
            <string>开始队列</string>
@@ -108,7 +108,7 @@
         <item row="1" column="1">
          <widget class="QPushButton" name="stop_scan_queue_btn">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="text">
            <string>停止队列</string>

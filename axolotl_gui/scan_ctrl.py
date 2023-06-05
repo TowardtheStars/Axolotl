@@ -553,12 +553,22 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         def __stop_scan():
             self.scan_task().cancel()
 
+        def __start_scan_queue():
+            for task in scan_plan_tasks:
+                task.start()
+
+        def __stop_scan_queue():
+            for task in scan_plan_tasks:
+                if task.running:
+                    task.cancel()
+
         # endregion
 
         # region Eventlisteners
         @SCAN_EVENT_MEDIATOR.event_listener(PostMeasureEvent)
         def __update_progress_bar(event:PostMeasureEvent): 
             if event.scan_plan == self.scan_data(): 
+                self.progressbar.setEnabled(True)
                 self.progressbar.setValue(event.progress)
                 if event.progress > 0:
                     deltaT = (datetime.now() - event.timestamp).total_seconds()
@@ -617,6 +627,8 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         
         # region Connections
         
+        self.start_scan_queue_btn.clicked.connect(__start_scan_queue)
+        self.stop_scan_queue_btn.clicked.connect(__stop_scan_queue)
 
         self.channel_mode_switch_btn.clicked.connect(__switch_channel_mode)
         self.should_scan_y.stateChanged.connect(__axis_check_change)
