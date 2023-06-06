@@ -27,7 +27,15 @@ from .mediator import SCAN_EVENT_MEDIATOR
 
 logger = logging.getLogger(__name__)        
 
-scan_plan_tasks: List[ScanExecutor] = []
+scan_plan_tasks: Dict[int, ScanExecutor] = {}
+
+def add_plan(plan:ScanExecutor):
+    global scan_plan_tasks
+    scan_plan_tasks[id(plan)] = plan
+
+def del_plan(id:int):
+    global scan_plan_tasks
+    scan_plan_tasks[id] = None
 
 PLAN_PATH = pathjoin(data_root, 'gui', 'scan_plans.json')
 
@@ -35,17 +43,20 @@ def load_plans(manager:InstrumentManager):
     if os.path.exists(PLAN_PATH):
         logger.info('Load plans')
         with open(PLAN_PATH, encoding='utf8', mode='r') as file:
-            jsonlst:list = json.load(file)
-        for jsonobj in jsonlst:
-            try:    # 循环内 try，不阻塞其他任务计划加载
-                plan = ScanPlan.fromJson(jsonobj)
-                scan_plan_tasks.append(ScanExecutor(manager, plan))
-            except:
-                logger.error('Cannot load plan', exc_info=True)
+            try:
+                jsonlst:list = json.load(file)
+            except :
+                jsonlst = []
+            for jsonobj in jsonlst:
+                try:    # 循环内 try，不阻塞其他任务计划加载
+                    plan = ScanPlan.fromJson(jsonobj)
+                    add_plan(ScanExecutor(manager, plan))
+                except:
+                    logger.error('Cannot load plan', exc_info=True)
             
 def save_plans():
     with open(PLAN_PATH, mode='w', encoding='utf8') as file:
-        json.dump([task.plan for task in scan_plan_tasks], 
+        json.dump([task.plan for task in scan_plan_tasks.values()], 
             fp=file, ensure_ascii=False, cls=ScanPlan.encoder_cls(), indent=2, sort_keys=True
             )
 
@@ -153,6 +164,7 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         logger.debug('Refresh GUI')
 
         self.refreshing_gui = True
+        # self.load_plans()
         if self.scan_data() is not None:
 
             logger.debug('Display ScanPlan %s', self.scan_data())
@@ -378,7 +390,12 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             widget.setEnabled(enable)
 
     def find_plan_item(self, task:Task) -> QListWidgetItem:
-        idx = scan_plan_tasks.index(task)
+        fidx = id(task)
+        idx = -1
+        for i in range(self.scan_plan_list.count()):
+            if fidx == self.scan_plan_list.item(i).data(self.PLAN):
+                idx = i
+                break
         if idx < 0 or idx >= self.scan_plan_list.count():
             logger.warn("Unmannaged task!")
             return None
@@ -419,20 +436,23 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
         
         def __create_plan():
             item = QListWidgetItem(parent = self.scan_plan_list)
-            item.setData(self.PLAN, len(scan_plan_tasks))
-            scan_plan_tasks.append(ScanExecutor(self.manager, ScanPlan()))
+            plan = ScanExecutor(self.manager, ScanPlan())
+            item.setData(self.PLAN, id(plan))
+            add_plan(plan)
             self.scan_plan_list.addItem(item)
-
             save_plans()
+            self.load_plans()
 
         
         def __del_plan():
+            global scan_plan_tasks
             removing = self.scan_plan_list
             for item in removing.selectedIndexes():
                 scan_plan_tasks[item.data(self.PLAN)] = None
                 removing.takeItem(item.row())
-            scan_plan_tasks = [task for task in scan_plan_tasks if task]
+            scan_plan_tasks = {id(task):task for task in scan_plan_tasks.values() if task}
             save_plans()
+            self.load_plans()
 
         @self.refresh_display
         @self.refresh_data
@@ -554,11 +574,11 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             self.scan_task().cancel()
 
         def __start_scan_queue():
-            for task in scan_plan_tasks:
-                task.start()
+            for i in range(self.scan_plan_list.count()):
+                scan_plan_tasks[self.scan_plan_list.item(i).data(self.PLAN)].start()
 
         def __stop_scan_queue():
-            for task in scan_plan_tasks:
+            for task in scan_plan_tasks.values():
                 if task.running:
                     task.cancel()
 
@@ -676,9 +696,10 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
 
     
     def load_plans(self):
-        for i, plan in enumerate(scan_plan_tasks):
+        self.scan_plan_list.clear()
+        for idx, plan in scan_plan_tasks.items():
             item = QListWidgetItem(plan.get_name(), parent=self.scan_plan_list)
-            item.setData(self.PLAN, i)
+            item.setData(self.PLAN, idx)
             self.scan_plan_list.addItem(item)
 
     def on_scan_plan_data_error(self):
