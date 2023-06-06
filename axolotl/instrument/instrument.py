@@ -96,6 +96,15 @@ class Instrument(object):
             Tuple: a tuple contains channels
         """        
         return tuple()
+    
+    def channel_dict(self) -> Dict[str, 'Channel']:
+        """Return a dict contains channel id : channel.
+        Can only be called after instrument manager is constructed.
+
+        Returns:
+            Dict[str, 'Channel']: channel$id : channel
+        """        
+        return {channel.id : channel for channel in self.channel_list()}
 
     def open(self):
         """Open and connect instrument
@@ -119,6 +128,15 @@ class Instrument(object):
     
     def __repr__(self) -> str:
         return '<Instrument {}>'.format(self.id)
+    
+    @classmethod
+    def generate_config(path:str):
+        """用于生成默认配置文件
+
+        Args:
+            path (str): 生成的文件名
+        """        
+        pass
 
 
 class SystemInstrument(Instrument):
