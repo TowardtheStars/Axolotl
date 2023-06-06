@@ -14,7 +14,6 @@ from ..task import *
 from axolotl.instrument import *
 
 from .events import *
-from .exceptions import *
 from .data import *
 
 logger = logging.getLogger(__name__)
@@ -31,6 +30,13 @@ accessable_functions = {
 
 logger.debug(accessable_functions)
     
+class ScanError(RuntimeError): 
+    def __init__(self, exec:'ScanExecutor', *args: object) -> None:
+        self.exec = exec
+        self.plan: ScanPlan = exec.plan
+        super().__init__(*args)
+
+class ScanTargetError(ScanError): ...
 
 class ScanExecutor(Task):
     def __init__(self, instrument_manager:InstrumentManager, scan_plan:ScanPlan) -> None:
@@ -66,7 +72,8 @@ class ScanExecutor(Task):
         self._running = True
         logger.info('Start Scan Task')
         self.__timestamp = datetime.now()
-        self.fire_event(ScanStartEvent)
+        
+        
         self.__scan_channel:List[Channel] = [
                 self.manager.get_channel_strong(idx)
                 for idx in self.plan.scan_channel
@@ -77,9 +84,11 @@ class ScanExecutor(Task):
         }
         self.__progress = 0
         self.__validate()
+        self.fire_event(ScanStartEvent)
+        
 
     def __validate(self):
-        # Validate Channels exist
+        # region Validate Channels exist
         argument_channel_flag = all([
             channel is not None and channel.writable()
             for channel in self.__argument_channel_formula.keys()
@@ -92,8 +101,32 @@ class ScanExecutor(Task):
             channel is not None and channel.writable()
             for channel in self.__scan_channel
         ])
+        
+        
         if not all([argument_channel_flag, record_env_channel_flag, scan_channel_flag]):
-            raise ScanError('Invalid Channel in plan!')
+            raise ScanError(self, 'Invalid Channel in plan!')
+        if not len([
+            channel is not None and channel.writable()
+            for channel in self.__scan_channel
+        ]) > 0:
+            raise ScanError(self, 'No scan channel in plan!')
+        # endregion
+
+        # region axes
+        axis_channel_flag = self.plan.axes_count() > 0
+        if not axis_channel_flag:
+            raise ScanError(self, 'No axes in plan!')
+        
+        for axis in self.plan.axes:
+            if axis.step == 0:
+                raise ScanError(self, axis.name, '步长为 0!')
+        # endregion
+
+        save_path_flag = len(self.plan.save_path) > 0
+        if not save_path_flag:
+            raise ScanError(self, 'Save path not set!')
+        
+
         
     def cancel(self) -> bool:
         self._running = False

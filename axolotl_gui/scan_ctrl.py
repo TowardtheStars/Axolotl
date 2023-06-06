@@ -567,8 +567,16 @@ class ScanCtrl(Ui_ScanControl, QGroupBox):
             if self.scan_data():
                 # self.task = ScanExecutor(self.manager, self.scan_data())
                 
-                self.progressbar.setMaximum(self.scan_data().workload)
-                self.scan_task().start()
+                try:
+                    self.scan_task().start()
+                    self.progressbar.setMaximum(self.scan_data().workload)
+                except ScanError as e:
+                    msg = QMessageBox()
+                    msg.setIcon(QMessageBox.Critical)
+                    msg.setWindowTitle('Error')
+                    msg.setText('Error')
+                    msg.setInformativeText(' '.join(e.args))
+                    msg.exec_()
             
         def __stop_scan():
             self.scan_task().cancel()

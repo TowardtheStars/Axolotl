@@ -11,7 +11,6 @@ from matplotlib import pyplot as plt
 import matplotlib
 
 from axolotl.automation.scan.events import *
-from axolotl.automation.scan.exceptions import *
 from axolotl.instrument import *
 from axolotl.util import *
 
