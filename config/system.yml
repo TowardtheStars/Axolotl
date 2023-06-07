@@ -11,10 +11,12 @@
 # 默认值: []
 instruments: 
   - 
-    type: counter
-    id: Counter
-    address: ''
-    config: 'instruments/counter.yaml'
+    type: OriginDAC
+    id: test1
+    address: 
+      - '192.168.110.227'
+      - '192.168.110.228'
+    config: 'instruments/testOriginDAC.yaml'
 
 # 多线程控制数量，0 时禁用
 #             

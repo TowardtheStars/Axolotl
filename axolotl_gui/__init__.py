@@ -48,5 +48,6 @@ def main():
     app = QApplication(sys.argv)
     manager = InstrumentManager()
     manager.load_instruments()
+    manager.open_all()
     ex = MainWindow(manager)
     sys.exit(app.exec_())

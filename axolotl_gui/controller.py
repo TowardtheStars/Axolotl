@@ -38,7 +38,7 @@ def formatter(readout) -> str:
     if isinstance(readout, str):
         return readout
     if np.issubdtype(type(readout), np.number):
-        return '{0:11.6g}'.format(readout)
+        return f'{readout:8.6g}'
     return str(readout)
 
 

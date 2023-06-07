@@ -8,7 +8,7 @@ run:
 	.\run.bat
 
 clear:
-	rm -r test
+	if ( test-path test ) {rm -r test}
 	mkdir test
 	if ( test-path ${ZIP_NAME} ) {rm ${ZIP_NAME}}
 

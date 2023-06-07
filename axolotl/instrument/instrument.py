@@ -130,7 +130,7 @@ class Instrument(object):
         return '<Instrument {}>'.format(self.id)
     
     @classmethod
-    def generate_config(path:str):
+    def generate_config() -> Union[Dict, ConfigDictEntry]:
         """用于生成默认配置文件
 
         Args:
@@ -218,7 +218,7 @@ class InstrumentManager:
         for instr in self.instruments:
             try:
                 for i, channel in enumerate(instr.channel_list()):
-                    channel.setId(i)
+                    # channel.setId(i)
                     
                     channel_list.append(channel)
                 
