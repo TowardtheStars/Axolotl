@@ -130,7 +130,7 @@ class Instrument(object):
         return '<Instrument {}>'.format(self.id)
     
     @classmethod
-    def generate_config() -> Union[Dict, ConfigDictEntry]:
+    def generate_config(cls) -> Union[Dict, ConfigDictEntry]:
         """用于生成默认配置文件
 
         Args:
