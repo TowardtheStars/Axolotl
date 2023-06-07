@@ -35,10 +35,15 @@ def expose(src, dst, namelist:Iterable[str]):
 
 
 def formatter(readout) -> str:
-    if isinstance(readout, str):
-        return readout
-    if np.issubdtype(type(readout), np.number) or np.issubdtype(type(readout), np.ndarray):
-        return f'{readout:8.6g}'
+    if readout is not None:
+        if np.issubdtype(type(readout), np.number):
+            return f'{readout:8.6g}'
+        if np.issubdtype(type(readout), np.ndarray):
+            if np.issubdtype(readout.dtype, np.number):
+                return f'{readout:8.6g}'
+            else:
+                return str(readout)
+
     return str(readout)
 
 
