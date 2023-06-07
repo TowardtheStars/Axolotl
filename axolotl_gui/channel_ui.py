@@ -18,6 +18,7 @@ from .controller import *
 from .mediator import CHANNEL_EVENT_MEDIATOR
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class ChannelWidget(Ui_ChannelWidget, QFrame):
