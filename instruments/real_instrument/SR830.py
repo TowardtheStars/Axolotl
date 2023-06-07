@@ -8,8 +8,9 @@ from axolotl.instrument import *
 from axolotl.util import *
 from pyvisa import ResourceManager, constants
 
+from functools import partial
 
-@Instrument.register()
+@Instrument.register('SR830')
 class SR830(SCPIInstrument):
 
     SENS_LEVELS_AMP = tuple(
@@ -31,10 +32,16 @@ class SR830(SCPIInstrument):
                 value_type=float,
                 value_dimension=0
             ).accept(
-                SingleLineCmdModifier(
-                    read_cmd = 'FREQ?',
-                    write_cmd = 'FREQ {0:f}',
-                    translator = float
+                # SingleLineCmdModifier(
+                #     read_cmd = 'FREQ?',
+                #     write_cmd = 'FREQ {0:f}',
+                #     translator = float
+                # ),
+                SCPICmdModifier(
+                    nodes=('FREQ', ),
+                    write_fmt='%f',
+                    translator=float,
+                    colon_start=False
                 ),
                 RangeModifier(
                     min=0.001, 
@@ -46,10 +53,16 @@ class SR830(SCPIInstrument):
                 value_dimension = 0,
                 default_stepping=0.004
             ).accept(
-                SingleLineCmdModifier(
-                    read_cmd='SLVL?',
-                    write_cmd='SLVL {0:f}',
-                    translator = float
+                # SingleLineCmdModifier(
+                #     read_cmd='SLVL?',
+                #     write_cmd='SLVL {0:f}',
+                #     translator = float
+                # ),
+                SCPICmdModifier(
+                    nodes=('SLVL', ),
+                    write_fmt='%f',
+                    translator=float,
+                    colon_start=False
                 ),
                 RangeModifier(
                     min=0.004,
@@ -62,10 +75,16 @@ class SR830(SCPIInstrument):
                 'value_dimension': 0,
                 'default_stepping': 0
             }).accept(
-                SingleLineCmdModifier(
-                    read_cmd = 'PHAS?',
-                    write_cmd = 'PHAS {0:f}',
-                    translator = float
+                # SingleLineCmdModifier(
+                #     read_cmd = 'PHAS?',
+                #     write_cmd = 'PHAS {0:f}',
+                #     translator = float
+                # ),
+                SCPICmdModifier(
+                    nodes=('PHAS', ),
+                    write_fmt='%f',
+                    translator=float,
+                    colon_start=False
                 ),
                 RangeModifier(
                     min = -180,
@@ -92,7 +111,8 @@ class SR830(SCPIInstrument):
         channels.update({
             f'I_{s:s}': ChannelBuilder(
                 value_type=float,
-                read_func=self.__read_with_auto_adjust_sens(i)
+                read_func=partial(self.__read_with_auto_adjust_sens, i),
+                value_dimension=0
             )
             for i, s in enumerate(('x','y','r','θ'))
         })
@@ -103,7 +123,7 @@ class SR830(SCPIInstrument):
                     k: ConfigEntry(str, default=k) for k in channels.keys()
                 }, comment_before='Names for each channels'
             ),
-            'Aux Output Limit': ConfigEntry(
+            'Aux Output Limit': ConfigDictEntry(
                 {
                     'min': ConfigEntry(float, -10.5, comments='Unit: V'),
                     'max': ConfigEntry(float, 10.5, comments='Unit: V')
@@ -119,7 +139,7 @@ class SR830(SCPIInstrument):
                 **_cfg['Aux Output Limit']
             ))
 
-        self.__channels = tuple(builder.build(_cfg['Name'][k], self) for k, builder in channels.items())
+        self.__channels = tuple(builder.build(_cfg['Names'][k], self) for k, builder in channels.items())
     
     def __read_with_auto_adjust_sens(self, idx:int) -> float:
         def read_sens():

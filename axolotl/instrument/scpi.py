@@ -34,10 +34,11 @@ class SingleLineCmdModifier(ChannelModifier):
 def SCPICmdModifier(
         nodes: Tuple[str],
         write_fmt: str,
-        translator: Optional[Callable[[str], ChannelValue]] = None
+        translator: Optional[Callable[[str], ChannelValue]] = None,
+        colon_start: bool = True
     ):
     cmd_base = ':'.join(nodes)
-    if cmd_base and not cmd_base.startswith(':'):
+    if cmd_base and not cmd_base.startswith(':') and colon_start:
         cmd_base = ':' + cmd_base
     
     read_cmd = cmd_base + '?'

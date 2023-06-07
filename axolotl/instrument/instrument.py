@@ -367,7 +367,7 @@ class Channel:
 
         self.__integer_index:int = None
 
-        self.__validate_type_and_dimension()
+        # self.__validate_type_and_dimension()
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, Channel):

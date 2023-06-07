@@ -16,7 +16,7 @@ class ChannelBuilder:
     read_func_generator:Optional[Callable[[Instrument, str], ChannelReadFunc]] = None
     write_func_generator:Optional[Callable[[Instrument, str], ChannelWriteFunc]] = None
 
-    _build_check_list:Dict['ChannelModifier', Callable[['ChannelBuilder', Instrument, str], bool]] = field(default_factory=list)
+    _build_check_list:Dict['ChannelModifier', Callable[['ChannelBuilder', Instrument, str], bool]] = field(default_factory=dict)
 
     def accept(self, *modifiers:'ChannelModifier'):
         for modifier in modifiers:
@@ -35,8 +35,8 @@ class ChannelBuilder:
         return Channel(
             parent = parent, 
             name = name, 
-            read_func = self.read_func or self.read_func_generator(parent, name),
-            write_func = self.write_func or self.write_func_generator(parent, name),
+            read_func = self.read_func or self.read_func_generator(parent, name) if self.read_func_generator else None,
+            write_func = self.write_func or self.write_func_generator(parent, name) if self.write_func_generator else None,
             validator = self.validator,
             value_type = self.value_type,
             value_dimension = self.value_dimension,
