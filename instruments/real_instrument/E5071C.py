@@ -1,13 +1,16 @@
 
 
 from typing import *
+from typing import Tuple
 from numpy import array, ndarray
 
 from axolotl.instrument import *
 
 from pyvisa import ResourceManager
 
-@Instrument.register()
+from axolotl.instrument.instrument import Channel
+
+@Instrument.register('E5071C')
 class E5071C(SCPIInstrument):
     def __init__(self, manager: 'InstrumentManager', address: str, cfg_path: str) -> None:
         super().__init__(manager, address, cfg_path)
@@ -81,6 +84,12 @@ class E5071C(SCPIInstrument):
                 )
             )
         }
+
+        self._channel_list = (builder.build(k, self) for k, builder in channels.items())
+
+    def channel_list(self) -> Tuple[Channel]:
+        return self._channel_list
+        
 
     def query(self, cmd: str):
         if not cmd.endswith('\n'):
