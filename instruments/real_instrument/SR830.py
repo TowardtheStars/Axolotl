@@ -67,8 +67,7 @@ class SR830(SCPIInstrument):
                 RangeModifier(
                     min=0.004,
                     max=5
-                ),
-                MakeFloat()
+                )
             ),
             'Phase': ChannelBuilder(**{
                 'value_type': float,
