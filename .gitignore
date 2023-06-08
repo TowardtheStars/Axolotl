@@ -6,6 +6,9 @@ __pycache__
 test_data/*
 AxolotlData/*
 
+# config
+config/*
+
 # private instruments
 instruments/private_instrument
 
