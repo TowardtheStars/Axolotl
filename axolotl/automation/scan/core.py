@@ -98,7 +98,7 @@ class ScanExecutor(Task):
             for idx in self.plan.record_env_channel
         ])
         scan_channel_flag = all([
-            channel is not None and channel.writable()
+            channel is not None and channel.readable()
             for channel in self.__scan_channel
         ])
         

@@ -35,8 +35,8 @@ class ChannelBuilder:
         return Channel(
             parent = parent, 
             name = name, 
-            read_func = self.read_func or self.read_func_generator(parent, name) if self.read_func_generator else None,
-            write_func = self.write_func or self.write_func_generator(parent, name) if self.write_func_generator else None,
+            read_func = self.read_func or (self.read_func_generator(parent, name) if self.read_func_generator else None),
+            write_func = self.write_func or (self.write_func_generator(parent, name) if self.write_func_generator else None),
             validator = self.validator,
             value_type = self.value_type,
             value_dimension = self.value_dimension,

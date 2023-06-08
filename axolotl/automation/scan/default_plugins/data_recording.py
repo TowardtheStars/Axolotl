@@ -15,6 +15,7 @@ from axolotl.instrument import *
 from axolotl.util import *
 
 from ..data import ScanData, ScanPlan
+from ..core import *
 
 
 logger = logging.getLogger(__name__)
@@ -239,8 +240,12 @@ class DrawLine:
                     plt.close(fig)
     
 logger.setLevel(logging.DEBUG)
+
+
 @SCAN_EVENT_BUS.event_listener(AxisPostIterateEvent)
 class DrawContour:
+    """二维图的绘制插件，通过监听完成一个轴的扫描事件触发，当且仅当能画二维图的时候执行
+    """    
     def __init__(self) -> None:
         self.contour_config = {}
         self.fig_config = {'figsize': (10, 6), 'constrained_layout':True}
