@@ -1,4 +1,9 @@
-
+if __name__ == '__main__':
+    import sys
+    sys.path.append('.')
+    from pysnooper import snoop
+else:
+    snoop = lambda x:x
 
 from typing import *
 from typing import Tuple
@@ -85,33 +90,38 @@ class E5071C(SCPIInstrument):
             )
         }
 
-        self._channel_list = (builder.build(k, self) for k, builder in channels.items())
+        self._channel_list = tuple(builder.build(k, self) for k, builder in channels.items())
 
     def channel_list(self) -> Tuple[Channel]:
         return self._channel_list
         
 
     def query(self, cmd: str):
-        if not cmd.endswith('\n'):
-            cmd += '\n'
+        print(cmd)
         return self._fp.query(cmd)
 
     def write(self, cmd:str):
-        if not cmd.endswith('\n'):
-            cmd += '\n'
         self._fp.write(cmd)
 
+    @snoop()
     def get_freq_list(self):
         list_str = self.query(':SENS1:FREQ:DATA?')
-        return array(map(float, list_str))
-    
+        list_str = list_str.split(',')
+        return array(tuple(map(float, list_str)))
+
+    @snoop()
     def get_amp_list(self):
         self.write(':CALC1:FORM MLIN')
-        return array(map(float, self.query(':CALC1:DATA:FDAT?')[::2]))
-    
+        list_str = self.query(':CALC1:DATA:FDAT?')
+        list_str = list_str.split(',')[::2]
+        return array(tuple(map(float, list_str)))
+
+    @snoop()
     def get_ext_phase_list(self):
         self.write(':CALC1:FORM UPH')
-        return array(map(float, self.query(':CALC1:DATA:FDAT?')[::2]))
+        list_str = self.query(':CALC1:DATA:FDAT?')
+        list_str = list_str.split(',')[::2]
+        return array(tuple(map(float, list_str)))
     
     def scan_line(self):
         self.singleTrig()
@@ -154,3 +164,9 @@ class E5071C(SCPIInstrument):
             self.write(f':SENS1:SWE:POIN {v:d}')
             self.write(':SENS1:SWE:TYPE LIN')
             self.write(':CALC1:FORM MLIN')
+
+
+if __name__ == '__main__':
+    manager = InstrumentManager()
+    inst = E5071C(manager, 'TCPIP0::192.168.110.121::inst0::INSTR', 'testconfig/E5071C.yml')
+    
