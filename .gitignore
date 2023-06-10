@@ -9,12 +9,6 @@ AxolotlData/*
 # config
 config/*
 
-# private instruments
-instruments/private_instrument
-
 # python venv
 venv
 
-# Add via VSCode
-Axolotl.zip
-instruments/doc/*
