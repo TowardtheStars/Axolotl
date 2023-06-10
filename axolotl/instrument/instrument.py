@@ -587,7 +587,7 @@ class Channel:
         return self._ft.running()
     
     def __str__(self) -> str:
-        return f'<Channel {self.name} attached to {self.parent:s}>'
+        return f'<Channel {self.name} attached to {str(self.parent):s}>'
     
     def __repr__(self) -> str:
         return f'<Channel {self.id}>'
