@@ -1,7 +1,7 @@
 
 
 import logging
-import time
+import time, os
 from concurrent import futures
 from enum import Enum
 from threading import Lock
@@ -78,6 +78,7 @@ class Instrument(object):
 
         self.locked: Callable[[], bool] = self._lock.locked
         self.release:Callable[[], None] = self._lock.release
+        self._cfg_path = cfg_path
         
         
 
@@ -97,6 +98,7 @@ class Instrument(object):
         """        
         return tuple()
     
+    @final
     def channel_dict(self) -> Dict[str, 'Channel']:
         """Return a dict contains channel id : channel.
         Can only be called after instrument manager is constructed.
@@ -104,7 +106,7 @@ class Instrument(object):
         Returns:
             Dict[str, 'Channel']: channel$id : channel
         """        
-        return {channel.id : channel for channel in self.channel_list()}
+        return {channel.id.split(':')[1] : channel for channel in self.channel_list()}
 
     def open(self):
         """Open and connect instrument
@@ -126,17 +128,24 @@ class Instrument(object):
     def id(self) -> str:
         return self._id + '@' + self.__type_id__
     
+    @property
+    def config_path(self) -> str:
+        return self._cfg_path
+    
     def __repr__(self) -> str:
         return '<Instrument {}>'.format(self.id)
     
-    @classmethod
-    def generate_config(cls) -> Union[Dict, ConfigDictEntry]:
-        """用于生成默认配置文件
+    @final
+    def load_config(self, template: Union[ConfigDictEntry, dict]) -> Config:
+        """用于生成读取配置文件
 
         Args:
-            path (str): 生成的文件名
+            template (ConfigDictEntry | dict): 生成的文件名
         """        
-        pass
+        return Config(self.config_path, template)
+    
+    def __format__(self, __format_spec: str) -> str:
+        return str(self)
 
 
 class SystemInstrument(Instrument):
@@ -171,8 +180,9 @@ class InstrumentManager:
                 )
         }
 
-    def __init__(self) -> None:
-        self.cfg:Config = Config('system', InstrumentManager.config_template())
+    def __init__(self, config_path = 'system') -> None:
+        Config.CFG_ROOT = os.path.dirname(config_path)
+        self.cfg:Config = Config(os.path.basename(config_path), InstrumentManager.config_template())
         self.cfg.load()
         
         # self._instrument_types = import_instruments()
@@ -521,7 +531,7 @@ class Channel:
                             time.sleep(self.parent.interval)
                             self.parent.release()
                     except Exception as e:
-                        print(e)
+                        logger.error(f'An exception was raised during stepping channel {str(self.id)}.', exc_info=True)
                         return False
                     return True
                 
