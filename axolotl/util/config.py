@@ -45,7 +45,7 @@ class ConfigEntry:
         'bool': bool
     }
 
-    def __init__(self, type_, default=None, comments=None, range_:Optional[tuple]=None) -> None:
+    def __init__(self, type_, default=None, comments=None, range_:Optional[tuple]=None, no_comment=False) -> None:
         if type_ in ConfigEntry.AVAILABLE_TYPES.values() or ConfigEntry.AVAILABLE_TYPES.keys():
             self. _type = type_ 
         else:
@@ -54,11 +54,14 @@ class ConfigEntry:
         self._min = -inf
         self._max = inf
         self.set_comment(comments)
+        self.no_comment = no_comment
         self.set_range(range_)
         self._default = default or type_()
     
     @property
-    def comment(self):
+    def comment(self) -> str:
+        if self.no_comment:
+            return ''
         result:list[Any] = deepcopy(self._comment)  # type: ignore
         result.append(r'%config_entry.type.name%: ' + self.typename)
         
@@ -73,7 +76,7 @@ class ConfigEntry:
         
 
     @property
-    def typename(self):
+    def typename(self) -> str:
         return self._type.__name__
     
     @property
@@ -81,7 +84,7 @@ class ConfigEntry:
         return self._default
 
     @property
-    def range(self):
+    def range(self) -> tuple[Any, Any]:
         return (self._min, self._max) if self.isnumeric() else None
 
     def validator(self, value) -> bool:
@@ -124,7 +127,7 @@ class ConfigEntry:
 
 
 class ConfigDictEntry:
-    def __init__(self, data: dict, comment_before: Optional[Union[str, list, tuple]]=None, comment_after: Optional[Union[str, list, tuple]]=None) -> None:
+    def __init__(self, data: dict, comment_before: Optional[Union[str, list, tuple]]=None, comment_after: Optional[Union[str, list, tuple]]=None, no_comment=False) -> None:
         self._comment_before = []
         if comment_before:
             if isinstance(comment_before, str):
@@ -138,6 +141,7 @@ class ConfigDictEntry:
             else:
                 self._comment_after.extend(comment_after)
         self._data = data
+        self.no_comment = no_comment
 
     def __getitem__(self, idx):
         return self._data[idx]
@@ -147,11 +151,11 @@ class ConfigDictEntry:
 
     @property
     def comment_before(self):
-        return '\n'.join(self._comment_before)
+        return '\n'.join(self._comment_before) if not self.no_comment else ''
 
     @property
     def comment_after(self):
-        return '\n'.join(self._comment_after)
+        return '\n'.join(self._comment_after) if not self.no_comment else ''
 
     def items(self):
         return self._data.items()
