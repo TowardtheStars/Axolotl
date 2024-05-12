@@ -180,7 +180,7 @@ class InstrumentManager:
                 )
         }
 
-    def __init__(self, config_path = 'system') -> None:
+    def __init__(self, config_path:str = 'system') -> None:
         Config.CFG_ROOT = os.path.dirname(config_path)
         self.cfg:Config = Config(os.path.basename(config_path), InstrumentManager.config_template())
         self.cfg.load()
