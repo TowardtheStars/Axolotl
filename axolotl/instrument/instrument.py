@@ -177,7 +177,8 @@ class InstrumentManager:
             'max_threads': ConfigEntry(int, default=16, range_=(0, 64), comments="""\
 多线程控制数量，0 时禁用
             """
-                )
+                ),
+            'stylesheet': ConfigEntry(str, default="", comments="样式表，用于自定义外观")
         }
 
     def __init__(self, config_path:str = 'system') -> None:
