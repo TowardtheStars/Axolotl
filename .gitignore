@@ -7,7 +7,7 @@ test_data/*
 AxolotlData/*
 
 # config
-config/*
+config
 
 # python venv
 venv

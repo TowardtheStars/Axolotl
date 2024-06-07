@@ -270,6 +270,12 @@ class Config:
     def __getitem__(self, index):
         return self._data.__getitem__(index)
     
+    def __str__(self):
+        return f"<{type(self).__name__} {self.name or id(self)}: {str(self._data)}>"
+    
+    def __repr__(self):
+        return str(self)
+    
     
 
 
@@ -292,5 +298,5 @@ if __name__ == '__main__':
     }
     t = Config('testcfg', template)
     t.load()
-    print(t['int'])
+    print(t)
  
