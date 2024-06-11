@@ -276,6 +276,9 @@ class Config:
     def __repr__(self):
         return str(self)
     
+    def to_dict(self) -> dict:
+        return deepcopy(self._data)
+    
     
 
 
@@ -299,4 +302,5 @@ if __name__ == '__main__':
     t = Config('testcfg', template)
     t.load()
     print(t)
+    print({**t.to_dict()})
  

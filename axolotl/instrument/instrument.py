@@ -68,7 +68,7 @@ class Instrument(object):
 
     
 
-    def __init__(self, manager:'InstrumentManager', address:str, cfg_path:str) -> None:
+    def __init__(self, manager:'InstrumentManager', address:str, cfg_path:str, *args, **kwargs) -> None:
         self._lock = Lock()
         self._manager:'InstrumentManager' = manager
         self._address:str = address
@@ -208,7 +208,7 @@ class InstrumentManager:
             type_key = connect_info['type']
             if type_key in self.instrument_types.keys():
                 _type:type['Instrument'] = self.instrument_types[type_key]
-                inst:'Instrument' = _type(self, connect_info['address'], connect_info['config'])
+                inst:'Instrument' = _type(self, **connect_info.to_dict())
                 
                 # Default id format: type_key + No. of instrument
                 inst.setId((type_key + '{0:d}'.format(len(self._instruments_by_type.get(type_key, [])))) if 'id' not in connect_info.keys() else connect_info['id'])
