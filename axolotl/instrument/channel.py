@@ -45,7 +45,7 @@ class ChannelBuilder:
             )
 
 class ChannelModifier:
-    def modify(self, builder:ChannelBuilder):
+    def modify(self, builder:ChannelBuilder) -> None:
         raise NotImplementedError()
     
     def validate_build(self, builder:ChannelBuilder, parent:Instrument, name:str):
@@ -103,3 +103,25 @@ class MakeFloat(ChannelModifier):
             builder.write_func_generator = lambda parent, str: lambda x: builder.write_func_generator(parent, str)(float(x))
         if builder.read_func_generator:
             builder.read_func_generator = lambda parent, str: lambda: float(builder.read_func_generator(parent, str)())
+            
+            
+class MakeInt(ChannelModifier):
+    def modify(self, builder: ChannelBuilder):
+        if builder.write_func:
+            builder.write_func = lambda x: builder.write_func(int(x))
+        if builder.read_func:
+            builder.read_func = lambda: int(builder.read_func())
+
+        if builder.write_func_generator:
+            builder.write_func_generator = lambda parent, str: lambda x: builder.write_func_generator(parent, str)(int(x))
+        if builder.read_func_generator:
+            builder.read_func_generator = lambda parent, str: lambda: int(builder.read_func_generator(parent, str)())
+            
+
+class InnerVariableModifier(ChannelModifier):
+    def __init__(self, var_name=None):
+        self._var_name = var_name
+        
+    def modify(self, builder:ChannelBuilder):
+        builder.write_func_generator = lambda parent, channel_name: lambda x: setattr(parent, self._var_name or channel_name, x)
+        builder.read_func_generator = lambda parent, channel_name: lambda : getattr(parent, self._var_name or channel_name)
