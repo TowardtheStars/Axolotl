@@ -544,13 +544,16 @@ class Channel:
         if self.writable():
             if (not self._validate(value)) and self._fix_value: # fix value if necessary and possible
                 value = self._fix_value(value)
+            self.fire_event(ChannelWriteStartEvent(channel=self, target_value=value, current_value=self.read() if self.readable() else None))
             if self._validate(value):
+                
                 if self.readable() and self.stepping and self.parent.interval > 0 and np.abs(self.stepping) > 0 and self.value_type is not str:
                     return stepped_write()
                 else:
                     self._ft = self.manager.thread_executor.submit(self._write, value) # type: ignore
                     self._ft.add_done_callback(self.__set_done(value))
-                
+            else:
+                logger.error(f"Trying to write Channel `{self}` with invalid value {value}!")
             return self._ft
         
         return self._ft

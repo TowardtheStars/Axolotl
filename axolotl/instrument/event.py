@@ -16,3 +16,8 @@ class ChannelWriteDoneEvent(ChannelEvent):
 @dataclass(repr=True)
 class ChannelWriteStepEvent(ChannelEvent):
     value: 'ChannelValue'
+    
+@dataclass(repr=True)
+class ChannelWriteStartEvent(ChannelEvent):
+    target_value: 'ChannelValue'
+    current_value: 'ChannelValue'
