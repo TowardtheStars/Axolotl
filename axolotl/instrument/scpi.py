@@ -39,10 +39,11 @@ def SCPICmdModifier(
     ):
     
     if isinstance(nodes, str):
-        
-    cmd_base = ':'.join(nodes)
-    if cmd_base and not cmd_base.startswith(':') and colon_start:
-        cmd_base = ':' + cmd_base
+        cmd_base = nodes
+    else:
+        cmd_base = ':'.join(nodes)
+        if cmd_base and not cmd_base.startswith(':') and colon_start:
+            cmd_base = ':' + cmd_base
     
     read_cmd = cmd_base + '?'
     write_cmd = None
