@@ -379,7 +379,7 @@ class Channel:
         self.__id = name
 
         self.__integer_index:int = None
-        self._unit: Unit = Unit(unit)
+        self._unit: Unit = Unit(unit or '1')
 
         # self.__validate_type_and_dimension()
 
