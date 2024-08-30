@@ -1,4 +1,5 @@
 
+from dataclasses import dataclass
 from typing import *
 
 from .channel import *
@@ -19,8 +20,8 @@ class SingleLineCmdModifier(ChannelModifier):
     translator: Optional[Callable[[str], ChannelValue]] = None
 
     def modify(self, builder: ChannelBuilder):
-        builder.read_func_generator = lambda instr, name: (lambda: self.translator(instr.query(self.read_cmd)))
-        builder.write_func_generator = lambda instr, name: (lambda x: instr.write(self.write_cmd % x))
+        builder.read_func_generator(lambda instr, name: (lambda: self.translator(instr.query(self.read_cmd))))
+        builder.write_func_generator(lambda instr, name: (lambda x: instr.write(self.write_cmd % x)))
 
     def validate_build(self, builder: ChannelBuilder, parent: Instrument, name: str):
         if isinstance(parent, SCPIInstrument):

@@ -6,6 +6,7 @@ from concurrent import futures
 from enum import Enum
 from threading import Lock
 from typing import *
+from pint import Unit
 
 import numpy as np
 
@@ -208,7 +209,7 @@ class InstrumentManager:
             type_key = connect_info['type']
             if type_key in self.instrument_types.keys():
                 _type:type['Instrument'] = self.instrument_types[type_key]
-                inst:'Instrument' = _type(self, **connect_info.to_dict())
+                inst:'Instrument' = _type(self, **connect_info)
                 
                 # Default id format: type_key + No. of instrument
                 inst.setId((type_key + '{0:d}'.format(len(self._instruments_by_type.get(type_key, [])))) if 'id' not in connect_info.keys() else connect_info['id'])
@@ -328,7 +329,8 @@ class Channel:
         value_type: Optional[Type[ChannelValue]]=None, 
         value_dimension: int=-1,
         default_stepping: Optional[ChannelValue]=None,
-        data_fixer: Optional[Callable[[ChannelValue], ChannelValue]]=None
+        data_fixer: Optional[Callable[[ChannelValue], ChannelValue]]=None,
+        unit: Optional[Union[str, Unit]]="1",
         ):
         """Create Channel
 
@@ -377,6 +379,7 @@ class Channel:
         self.__id = name
 
         self.__integer_index:int = None
+        self._unit: Unit = Unit(unit)
 
         # self.__validate_type_and_dimension()
 
@@ -436,7 +439,12 @@ class Channel:
     # Do not call this!
     def _set_integer_index(self, v:int):
         self.__integer_index = v
+    
 
+    @property
+    def unit(self) -> Unit:
+        return Unit(self._unit)
+    
     @property
     def manager(self) -> InstrumentManager:
         """Manager of this channel, read only
