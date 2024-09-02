@@ -173,7 +173,7 @@ class InstrumentManager:
         type: 仪器类型名称，需要用 @Instrument.register(id:str) 在仪器类前注册
         id: 仪器自定义 id，不可重复，可选，便于保存和迁移扫描设置
         address: 地址，可以是一个地址列表，例如本源的 DAC
-        config: config 文件夹中的配置文件路径
+        cfg_path: config 文件夹中的配置文件路径
 """),
             'max_threads': ConfigEntry(int, default=16, range_=(0, 64), comments="""\
 多线程控制数量，0 时禁用
