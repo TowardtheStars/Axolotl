@@ -169,22 +169,34 @@ class InstrumentManager:
             'instruments': ConfigEntry(list, [], comments="""\
 仪器列表
 格式：
-    - # 一个仪器
-        type: 仪器类型名称，需要用 @Instrument.register(id:str) 在仪器类前注册
-        id: 仪器自定义 id，不可重复，可选，便于保存和迁移扫描设置
-        address: 地址，可以是一个地址列表，例如本源的 DAC
-        cfg_path: config 文件夹中的配置文件路径
+  - # 一个仪器
+    type: 仪器类型名称，需要用 @Instrument.register(id:str) 在仪器类前注册，必选项
+    id: 仪器自定义 id，不可重复，可选，便于保存和迁移扫描设置
+    address: 地址，可以是一个地址列表，例如本源的 DAC
+    cfg_path: config 文件夹中的配置文件路径
+
+例子（请务必注意使用空格缩进，具体几个空格无所谓，分层对齐即可，建议每层用 2 个空格）：
+instruments:
+  - # 仪器的开头
+    type: E5071C
+    id: "E5071C之随便什么名字，但尽量全英文数字下划线"
+    address: ['TCPIP0::192.168.1.1::inst0::INSTR']
+    cfg_path: 'E5071C.yml'
 """),
             'max_threads': ConfigEntry(int, default=16, range_=(0, 64), comments="""\
 多线程控制数量，0 时禁用
             """
                 ),
-            'stylesheet': ConfigEntry(str, default="", comments="样式表，用于自定义外观")
         }
 
     def __init__(self, config_path:str = 'system') -> None:
         Config.CFG_ROOT = os.path.dirname(config_path)
         self.cfg:Config = Config(os.path.basename(config_path), InstrumentManager.config_template())
+        self.cfg.header_comment = [
+            '仪器管理器配置文件',
+            '用于管理仪器，例如 E5071C, DAC 等'
+            '建议用 VSCode 修改，因为会自动格式化 + 语法高亮'
+        ]
         self.cfg.load()
         
         # self._instrument_types = import_instruments()
