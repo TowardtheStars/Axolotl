@@ -34,7 +34,7 @@ class ChannelBuilder:
         self._unit = unit
         self._read_func_generator = read_func_generator
         self._write_func_generator = write_func_generator
-        self._build_check_list = list()
+        self._build_check_list = dict()
         
     def read_func(self, read_func:ChannelReadFunc) -> 'ChannelBuilder':
         self._read_func = read_func
